@@ -2,7 +2,7 @@
 .SYNOPSIS
     Installs cmdpal for the current user (no admin rights needed).
 .EXAMPLE
-    irm https://github.com/OWNER/cmdpal/releases/latest/download/install.ps1 | iex
+    irm https://github.com/SurajaHasarinda/cmdpal/releases/latest/download/install.ps1 | iex
 .EXAMPLE
     .\install.ps1 -Version 0.2.0
 .EXAMPLE
@@ -23,7 +23,7 @@ param(
 $ErrorActionPreference = "Stop"
 $ProgressPreference = "SilentlyContinue" # Windows PowerShell 5.1 downloads are ~10x slower with the progress bar
 
-$Repo = if ($env:CMDPAL_REPO) { $env:CMDPAL_REPO } else { "OWNER/cmdpal" }
+$Repo = if ($env:CMDPAL_REPO) { $env:CMDPAL_REPO } else { "SurajaHasarinda/cmdpal" }
 $Archive = "cmdpal-x86_64-pc-windows-msvc.zip"
 
 function Write-Step($message) { Write-Host "==> $message" }

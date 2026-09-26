@@ -77,9 +77,7 @@ jobs:
           path: dist
       - name: Checksums and installers
         run: |
-          # The installers ship from this repo with a placeholder slug; bake in the real one.
-          sed "s#OWNER/cmdpal#${GITHUB_REPOSITORY}#g" install.sh > dist/install.sh
-          sed "s#OWNER/cmdpal#${GITHUB_REPOSITORY}#g" install.ps1 > dist/install.ps1
+          cp install.sh install.ps1 dist/
           chmod +x dist/install.sh
           cd dist
           sha256sum cmdpal-* > SHA256SUMS

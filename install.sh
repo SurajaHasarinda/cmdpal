@@ -1,7 +1,7 @@
 #!/bin/sh
 # cmdpal installer for Linux x86_64 (per-user, no sudo).
 #
-#   curl -fsSL https://github.com/OWNER/cmdpal/releases/latest/download/install.sh | sh
+#   curl -fsSL https://github.com/SurajaHasarinda/cmdpal/releases/latest/download/install.sh | sh
 #   curl -fsSL .../install.sh | sh -s -- --version 0.2.0
 #   sh install.sh --uninstall [--purge]
 #
@@ -9,7 +9,7 @@
 # directory holding the release assets), CMDPAL_REPO (owner/repo).
 set -eu
 
-REPO="${CMDPAL_REPO:-OWNER/cmdpal}"
+REPO="${CMDPAL_REPO:-SurajaHasarinda/cmdpal}"
 ARCHIVE="cmdpal-x86_64-unknown-linux-musl.tar.gz"
 
 say() { printf '==> %s\n' "$*"; }

@@ -10,18 +10,18 @@ cmdpal -m docker shell into container
 
 ## Install
 
-Per-user, no admin rights, no Rust required. Replace `OWNER` with the GitHub account that hosts this repository.
+Per-user, no admin rights, no Rust required.
 
 **Windows** (PowerShell 5.1 or 7, x64):
 
 ```powershell
-irm https://github.com/OWNER/cmdpal/releases/latest/download/install.ps1 | iex
+irm https://github.com/SurajaHasarinda/cmdpal/releases/latest/download/install.ps1 | iex
 ```
 
 **Linux** (x86_64, any distro):
 
 ```sh
-curl -fsSL https://github.com/OWNER/cmdpal/releases/latest/download/install.sh | sh
+curl -fsSL https://github.com/SurajaHasarinda/cmdpal/releases/latest/download/install.sh | sh
 ```
 
 Then open a new terminal and run `cmdpal`. The installers verify a SHA-256 checksum before installing anything.
@@ -33,9 +33,9 @@ Then open a new terminal and run `cmdpal`. The installers verify a SHA-256 check
 | Upgrade | re-run the installer | re-run the installer |
 | Uninstall | `.\install.ps1 -Uninstall` (`-Purge` also deletes history) | `sh install.sh --uninstall` (`--purge` also deletes history) |
 
-Download `install.ps1` / `install.sh` from the [latest release](https://github.com/OWNER/cmdpal/releases/latest) first if you prefer to read a script before running it. Windows binaries are not code-signed, so SmartScreen may ask for confirmation the first time.
+Download `install.ps1` / `install.sh` from the [latest release](https://github.com/SurajaHasarinda/cmdpal/releases/latest) first if you prefer to read a script before running it. Windows binaries are not code-signed, so SmartScreen may ask for confirmation the first time.
 
-**From source** (needs Rust and a C compiler): `cargo install --git https://github.com/OWNER/cmdpal`
+**From source** (needs Rust and a C compiler): `cargo install --git https://github.com/SurajaHasarinda/cmdpal`
 
 ## Use
 
