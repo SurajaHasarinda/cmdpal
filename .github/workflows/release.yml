@@ -1,0 +1,148 @@
+name: release
+
+# Publish by pushing a tag that matches the version in Cargo.toml:
+#   git tag v0.2.0 && git push origin v0.2.0
+on:
+  push:
+    tags: ["v*"]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build:
+    strategy:
+      fail-fast: true
+      matrix:
+        include:
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            exe: cmdpal.exe
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            exe: cmdpal
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Tag must match Cargo.toml version
+        shell: bash
+        run: |
+          version=$(grep -m1 '^version' Cargo.toml | cut -d'"' -f2)
+          if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+            echo "::error::tag $GITHUB_REF_NAME does not match Cargo.toml version v$version"
+            exit 1
+          fi
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
+      - name: Install musl toolchain
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+
+      - run: cargo test --locked --target ${{ matrix.target }}
+      - run: cargo build --release --locked --target ${{ matrix.target }}
+
+      - name: Package
+        shell: bash
+        run: |
+          mkdir stage dist
+          cp "target/${{ matrix.target }}/release/${{ matrix.exe }}" LICENSE README.md stage/
+          if [ "${{ matrix.exe }}" = "cmdpal.exe" ]; then
+            7z a "dist/cmdpal-${{ matrix.target }}.zip" ./stage/*
+          else
+            tar -czf "dist/cmdpal-${{ matrix.target }}.tar.gz" -C stage .
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: archive-${{ matrix.target }}
+          path: dist/*
+          if-no-files-found: error
+
+  assemble:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: archive-*
+          merge-multiple: true
+          path: dist
+      - name: Checksums and installers
+        run: |
+          # The installers ship from this repo with a placeholder slug; bake in the real one.
+          sed "s#OWNER/cmdpal#${GITHUB_REPOSITORY}#g" install.sh > dist/install.sh
+          sed "s#OWNER/cmdpal#${GITHUB_REPOSITORY}#g" install.ps1 > dist/install.ps1
+          chmod +x dist/install.sh
+          cd dist
+          sha256sum cmdpal-* > SHA256SUMS
+          cat SHA256SUMS
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-assets
+          path: dist/*
+          if-no-files-found: error
+
+  # A broken installer must fail the release before anyone can download it.
+  smoke:
+    needs: assemble
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-assets
+          path: dist
+
+      - name: Linux install, run, uninstall
+        if: runner.os == 'Linux'
+        run: |
+          export CMDPAL_BASE_URL="$PWD/dist" CMDPAL_INSTALL_DIR="$RUNNER_TEMP/bin"
+          cat dist/install.sh | sh
+          "$RUNNER_TEMP/bin/cmdpal" --version
+          test "$("$RUNNER_TEMP/bin/cmdpal" --pick 1 delete directory)" = 'rm -rf {path}'
+          sh dist/install.sh --uninstall
+          test ! -e "$RUNNER_TEMP/bin/cmdpal"
+
+      - name: Windows install, run, uninstall
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $dir = Join-Path $env:RUNNER_TEMP "cmdpal"
+          .\dist\install.ps1 -BaseUrl "$PWD\dist" -InstallDir $dir -NoPathUpdate
+          & "$dir\cmdpal.exe" --version
+          $picked = & "$dir\cmdpal.exe" --pick 1 delete directory
+          if ($picked -ne 'Remove-Item -Recurse -Force {path}') { throw "unexpected result: $picked" }
+          .\dist\install.ps1 -Uninstall -InstallDir $dir
+          if (Test-Path $dir) { throw "uninstall left files behind" }
+
+  publish:
+    needs: smoke
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-assets
+          path: dist
+      # Attestations need a public repo (or GitHub Enterprise); don't block the release without them.
+      - uses: actions/attest-build-provenance@v2
+        continue-on-error: true
+        with:
+          subject-path: dist/cmdpal-*
+      - name: Create release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes

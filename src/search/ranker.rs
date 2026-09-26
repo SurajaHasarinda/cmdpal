@@ -69,7 +69,16 @@ impl Ranker {
         let tokens = tokenize(query);
         let mut ranked: Vec<_> = commands
             .iter()
-            .filter_map(|indexed| self.score_command(indexed, &tokens, context, history.get(&indexed.command.id), engine, active_mode))
+            .filter_map(|indexed| {
+                self.score_command(
+                    indexed,
+                    &tokens,
+                    context,
+                    history.get(&indexed.command.id),
+                    engine,
+                    active_mode,
+                )
+            })
             .collect();
         ranked.sort_by(|a, b| b.score.total_cmp(&a.score));
         ranked.truncate(MAX_RESULTS);
@@ -96,14 +105,27 @@ impl Ranker {
             mode: if in_active_mode { self.mode_boost } else { 0.0 },
             matched: self.match_weight * matched,
         };
-        let demotion = if in_active_mode { 1.0 } else { self.other_mode_demotion };
-        Some(ScoredCommand { command: command.clone(), score: breakdown.total() * demotion, breakdown })
+        let demotion = if in_active_mode {
+            1.0
+        } else {
+            self.other_mode_demotion
+        };
+        Some(ScoredCommand {
+            command: command.clone(),
+            score: breakdown.total() * demotion,
+            breakdown,
+        })
     }
 }
 
 fn tag_relevance(indexed: &IndexedCommand, tokens: &[String], context: &ContextSnapshot) -> f32 {
     let query_hits = tokens.iter().filter(|token| indexed.has_tag(token)).count();
-    let context_hits = indexed.command.context_tags.iter().filter(|tag| context.tags.contains(*tag)).count();
+    let context_hits = indexed
+        .command
+        .context_tags
+        .iter()
+        .filter(|tag| context.tags.contains(*tag))
+        .count();
     ((query_hits + context_hits) as f32 / tokens.len().max(1) as f32).min(1.0)
 }
 

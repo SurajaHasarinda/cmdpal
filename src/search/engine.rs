@@ -3,17 +3,74 @@ use fuzzy_matcher::{skim::SkimMatcherV2, FuzzyMatcher};
 use std::{collections::HashMap, sync::LazyLock};
 
 const STOPWORDS: &[&str] = &[
-    "a", "an", "the", "to", "how", "do", "i", "can", "for", "of", "in", "on", "by", "with", "and", "my", "please",
-    "want", "need", "me", "is", "it", "its", "this", "that", "way", "command", "what", "whats", "which", "should",
-    "using", "use", "am", "are", "does", "there", "some", "any", "too", "just", "much", "many", "one", "few", "be",
-    "was", "been", "has", "have", "so", "then", "we", "our", "your", "you", "currently", "again", "also",
+    "a",
+    "an",
+    "the",
+    "to",
+    "how",
+    "do",
+    "i",
+    "can",
+    "for",
+    "of",
+    "in",
+    "on",
+    "by",
+    "with",
+    "and",
+    "my",
+    "please",
+    "want",
+    "need",
+    "me",
+    "is",
+    "it",
+    "its",
+    "this",
+    "that",
+    "way",
+    "command",
+    "what",
+    "whats",
+    "which",
+    "should",
+    "using",
+    "use",
+    "am",
+    "are",
+    "does",
+    "there",
+    "some",
+    "any",
+    "too",
+    "just",
+    "much",
+    "many",
+    "one",
+    "few",
+    "be",
+    "was",
+    "been",
+    "has",
+    "have",
+    "so",
+    "then",
+    "we",
+    "our",
+    "your",
+    "you",
+    "currently",
+    "again",
+    "also",
 ];
 
 // Canonical word first; every other word in the group is rewritten to it on both the query and the
 // catalog side, so a synonym matches exactly instead of relying on each alias listing every variant.
 const SYNONYMS: &[&[&str]] = &[
     &["directory", "folder", "dir"],
-    &["delete", "remove", "erase", "wipe", "del", "rm", "nuke", "destroy"],
+    &[
+        "delete", "remove", "erase", "wipe", "del", "rm", "nuke", "destroy",
+    ],
     &["list", "show", "display", "view", "see"],
     &["create", "make", "new"],
     &["stop", "terminate", "halt"],
@@ -30,7 +87,14 @@ const SYNONYMS: &[&[&str]] = &[
     &["deployment", "deploy"],
     &["copy", "cp", "duplicate"],
     &["move", "mv"],
-    &["admin", "root", "administrator", "superuser", "elevated", "sudo"],
+    &[
+        "admin",
+        "root",
+        "administrator",
+        "superuser",
+        "elevated",
+        "sudo",
+    ],
     &["undo", "revert", "rollback"],
     &["exit", "quit"],
     &["executable", "runnable"],
@@ -38,7 +102,8 @@ const SYNONYMS: &[&[&str]] = &[
     &["error", "stderr"],
 ];
 
-static STOPWORD_STEMS: LazyLock<Vec<String>> = LazyLock::new(|| STOPWORDS.iter().map(|word| stem(word)).collect());
+static STOPWORD_STEMS: LazyLock<Vec<String>> =
+    LazyLock::new(|| STOPWORDS.iter().map(|word| stem(word)).collect());
 static SYNONYM_STEMS: LazyLock<HashMap<String, String>> = LazyLock::new(|| {
     SYNONYMS
         .iter()
@@ -76,7 +141,10 @@ fn stem(word: &str) -> String {
         stem.pop();
     }
     let bytes = stem.as_bytes();
-    if stem.len() >= 4 && bytes[bytes.len() - 1] == bytes[bytes.len() - 2] && !b"aeiou".contains(&bytes[bytes.len() - 1]) {
+    if stem.len() >= 4
+        && bytes[bytes.len() - 1] == bytes[bytes.len() - 2]
+        && !b"aeiou".contains(&bytes[bytes.len() - 1])
+    {
         stem.pop();
     }
     stem
@@ -89,7 +157,10 @@ pub fn normalize(word: &str) -> Option<String> {
 }
 
 pub fn tokenize(text: &str) -> Vec<String> {
-    let mut tokens: Vec<String> = text.split(|c: char| !c.is_alphanumeric()).filter_map(normalize).collect();
+    let mut tokens: Vec<String> = text
+        .split(|c: char| !c.is_alphanumeric())
+        .filter_map(normalize)
+        .collect();
     tokens.dedup();
     tokens
 }
@@ -105,12 +176,19 @@ pub struct IndexedCommand {
 
 impl IndexedCommand {
     pub fn new(command: Command) -> Self {
-        let phrases = std::iter::once(&command.trigger).chain(&command.aliases).map(|phrase| tokenize(phrase)).collect();
+        let phrases = std::iter::once(&command.trigger)
+            .chain(&command.aliases)
+            .map(|phrase| tokenize(phrase))
+            .collect();
         let intent_text = command.intent_text().to_lowercase();
         Self {
             intent_words: tokenize(&intent_text),
             command_words: tokenize(&command.command),
-            tags: command.context_tags.iter().filter_map(|tag| normalize(tag)).collect(),
+            tags: command
+                .context_tags
+                .iter()
+                .filter_map(|tag| normalize(tag))
+                .collect(),
             phrases,
             intent_text,
             command,
@@ -128,26 +206,41 @@ pub struct SearchEngine {
 
 impl SearchEngine {
     pub fn new() -> Self {
-        Self { matcher: SkimMatcherV2::default() }
+        Self {
+            matcher: SkimMatcherV2::default(),
+        }
     }
 
     pub fn match_score(&self, indexed: &IndexedCommand, tokens: &[String]) -> Option<f32> {
         if tokens.is_empty() {
             return Some(0.0);
         }
-        let pooled = tokens.iter().map(|token| self.token_score(indexed, token)).sum::<f32>() / tokens.len() as f32;
+        let pooled = tokens
+            .iter()
+            .map(|token| self.token_score(indexed, token))
+            .sum::<f32>()
+            / tokens.len() as f32;
         if pooled <= 0.0 {
             return None;
         }
-        let phrase = indexed.phrases.iter().map(|words| phrase_agreement(tokens, words)).fold(0.0, f32::max);
+        let phrase = indexed
+            .phrases
+            .iter()
+            .map(|words| phrase_agreement(tokens, words))
+            .fold(0.0, f32::max);
         Some(POOLED_SHARE * pooled + (1.0 - POOLED_SHARE) * phrase)
     }
 
     fn token_score(&self, indexed: &IndexedCommand, token: &str) -> f32 {
-        let from_intent = best_word_score(token, &indexed.intent_words).or_else(|| self.fuzzy_score(token, &indexed.intent_text));
-        let from_command = best_word_score(token, &indexed.command_words).map(|score| score * COMMAND_TEXT_DISCOUNT);
+        let from_intent = best_word_score(token, &indexed.intent_words)
+            .or_else(|| self.fuzzy_score(token, &indexed.intent_text));
+        let from_command = best_word_score(token, &indexed.command_words)
+            .map(|score| score * COMMAND_TEXT_DISCOUNT);
         let from_tags = indexed.has_tag(token).then_some(TAG_MATCH_SCORE);
-        [from_intent, from_command, from_tags].into_iter().flatten().fold(0.0, f32::max)
+        [from_intent, from_command, from_tags]
+            .into_iter()
+            .flatten()
+            .fold(0.0, f32::max)
     }
 
     fn fuzzy_score(&self, token: &str, text: &str) -> Option<f32> {
@@ -165,16 +258,34 @@ fn phrase_agreement(tokens: &[String], words: &[String]) -> f32 {
     if words.is_empty() {
         return 0.0;
     }
-    let query_coverage = tokens.iter().filter_map(|token| best_word_score(token, words)).sum::<f32>() / tokens.len() as f32;
-    let phrase_coverage =
-        words.iter().filter_map(|word| tokens.iter().filter_map(|token| word_score(token, word)).reduce(f32::max)).sum::<f32>()
-            / words.len() as f32;
+    let query_coverage = tokens
+        .iter()
+        .filter_map(|token| best_word_score(token, words))
+        .sum::<f32>()
+        / tokens.len() as f32;
+    let phrase_coverage = words
+        .iter()
+        .filter_map(|word| {
+            tokens
+                .iter()
+                .filter_map(|token| word_score(token, word))
+                .reduce(f32::max)
+        })
+        .sum::<f32>()
+        / words.len() as f32;
     let total = query_coverage + phrase_coverage;
-    if total == 0.0 { 0.0 } else { 2.0 * query_coverage * phrase_coverage / total }
+    if total == 0.0 {
+        0.0
+    } else {
+        2.0 * query_coverage * phrase_coverage / total
+    }
 }
 
 fn best_word_score(token: &str, words: &[String]) -> Option<f32> {
-    words.iter().filter_map(|word| word_score(token, word)).reduce(f32::max)
+    words
+        .iter()
+        .filter_map(|word| word_score(token, word))
+        .reduce(f32::max)
 }
 
 fn word_score(token: &str, word: &str) -> Option<f32> {
@@ -197,14 +308,24 @@ mod tests {
 
     #[test]
     fn tokenize_drops_stopwords_and_normalizes() {
-        assert_eq!(tokenize("How to delete a Directory"), ["delet", "directory"]);
+        assert_eq!(
+            tokenize("How to delete a Directory"),
+            ["delet", "directory"]
+        );
         assert_eq!(tokenize("remove folders"), tokenize("deleting directories"));
     }
 
     #[test]
     fn stemming_is_consistent_across_inflections() {
-        for group in [["change", "changes", "changed"], ["stop", "stopped", "stopping"], ["file", "files", "filed"]] {
-            assert!(group.iter().all(|word| stem(word) == stem(group[0])), "{group:?}");
+        for group in [
+            ["change", "changes", "changed"],
+            ["stop", "stopped", "stopping"],
+            ["file", "files", "filed"],
+        ] {
+            assert!(
+                group.iter().all(|word| stem(word) == stem(group[0])),
+                "{group:?}"
+            );
         }
     }
 

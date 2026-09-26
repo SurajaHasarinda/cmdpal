@@ -2,7 +2,11 @@ use crate::modes::ActiveMode;
 use clap::Parser;
 
 #[derive(Parser)]
-#[command(name = "cmdpal", version, about = "Terminal command palette: cmdpal [-m <mode>] [query...]")]
+#[command(
+    name = "cmdpal",
+    version,
+    about = "Terminal command palette: cmdpal [-m <mode>] [query...]"
+)]
 pub struct Cli {
     /// Start in this mode (default: the mode you last quit in, else the one matching this OS)
     #[arg(short, long, value_enum)]

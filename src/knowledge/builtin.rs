@@ -18,6 +18,8 @@ mod tests {
         let ids: HashSet<_> = commands.iter().map(|c| &c.id).collect();
         assert_eq!(ids.len(), commands.len());
         assert!(commands.iter().filter(|c| c.mode == "windows").count() >= 90);
-        assert!(commands.iter().all(|c| ["windows", "linux", "git", "kube", "docker"].contains(&c.mode.as_str())));
+        assert!(commands
+            .iter()
+            .all(|c| ["windows", "linux", "git", "kube", "docker"].contains(&c.mode.as_str())));
     }
 }

@@ -1,7 +1,10 @@
 use super::snapshot::{GitContext, KubeContext, ShellType};
 use git2::{Branch, BranchType, Repository, StatusOptions};
 use serde::Deserialize;
-use std::{env, fs, path::{Path, PathBuf}};
+use std::{
+    env, fs,
+    path::{Path, PathBuf},
+};
 
 const MAX_ENTRIES: usize = 100;
 const MAX_BRANCHES: usize = 20;
@@ -10,7 +13,11 @@ pub fn detect_shell() -> ShellType {
     // PSModulePath is set system-wide on Windows, so it only signals "a PowerShell-family host is likely";
     // cmd.exe is out of scope for v1.
     if cfg!(windows) {
-        return if env::var_os("PSModulePath").is_some() { ShellType::Pwsh } else { ShellType::Unknown };
+        return if env::var_os("PSModulePath").is_some() {
+            ShellType::Pwsh
+        } else {
+            ShellType::Unknown
+        };
     }
     let shell = env::var("SHELL").unwrap_or_default();
     match Path::new(&shell).file_name().and_then(|name| name.to_str()) {
@@ -37,11 +44,20 @@ pub fn detect_git(cwd: &Path) -> Option<GitContext> {
     let repo = Repository::discover(cwd).ok()?;
     let (ahead, behind) = ahead_behind(&repo).unwrap_or_default();
     Some(GitContext {
-        branch: repo.head().ok().and_then(|head| head.shorthand().map(String::from)),
+        branch: repo
+            .head()
+            .ok()
+            .and_then(|head| head.shorthand().map(String::from)),
         changes: count_changes(&repo),
         ahead,
         behind,
-        remotes: repo.remotes().ok()?.iter().flatten().map(String::from).collect(),
+        remotes: repo
+            .remotes()
+            .ok()?
+            .iter()
+            .flatten()
+            .map(String::from)
+            .collect(),
         branches: local_branches(&repo),
     })
 }
@@ -49,7 +65,8 @@ pub fn detect_git(cwd: &Path) -> Option<GitContext> {
 fn count_changes(repo: &Repository) -> usize {
     let mut options = StatusOptions::new();
     options.include_untracked(true);
-    repo.statuses(Some(&mut options)).map_or(0, |statuses| statuses.len())
+    repo.statuses(Some(&mut options))
+        .map_or(0, |statuses| statuses.len())
 }
 
 fn ahead_behind(repo: &Repository) -> Option<(u32, u32)> {
@@ -96,8 +113,16 @@ pub fn detect_kube() -> Option<KubeContext> {
     let text = fs::read_to_string(kubeconfig_path()?).ok()?;
     let config: KubeConfig = serde_yaml::from_str(&text).ok()?;
     let current = config.current_context?;
-    let entry = config.contexts.into_iter().find(|named| named.name == current)?.context;
-    Some(KubeContext { context: Some(current), namespace: entry.namespace, cluster: entry.cluster })
+    let entry = config
+        .contexts
+        .into_iter()
+        .find(|named| named.name == current)?
+        .context;
+    Some(KubeContext {
+        context: Some(current),
+        namespace: entry.namespace,
+        cluster: entry.cluster,
+    })
 }
 
 fn kubeconfig_path() -> Option<PathBuf> {

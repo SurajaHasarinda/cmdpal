@@ -29,10 +29,19 @@ pub fn detect() -> ContextSnapshot {
     let git = await_until(git_result, deadline);
     let kube = await_until(kube_result, deadline);
     let tags = collect_tags(shell, &cwd_entries, git.as_ref(), kube.as_ref());
-    ContextSnapshot { shell, cwd, cwd_entries, git, kube, tags }
+    ContextSnapshot {
+        shell,
+        cwd,
+        cwd_entries,
+        git,
+        kube,
+        tags,
+    }
 }
 
-fn spawn_provider<T: Send + 'static>(work: impl FnOnce() -> Option<T> + Send + 'static) -> Receiver<Option<T>> {
+fn spawn_provider<T: Send + 'static>(
+    work: impl FnOnce() -> Option<T> + Send + 'static,
+) -> Receiver<Option<T>> {
     let (sender, receiver) = mpsc::channel();
     thread::spawn(move || {
         let _ = sender.send(work());
@@ -41,27 +50,59 @@ fn spawn_provider<T: Send + 'static>(work: impl FnOnce() -> Option<T> + Send + '
 }
 
 fn await_until<T>(receiver: Receiver<Option<T>>, deadline: Instant) -> Option<T> {
-    receiver.recv_timeout(deadline.saturating_duration_since(Instant::now())).ok().flatten()
+    receiver
+        .recv_timeout(deadline.saturating_duration_since(Instant::now()))
+        .ok()
+        .flatten()
 }
 
-fn collect_tags(shell: ShellType, entries: &[String], git: Option<&GitContext>, kube: Option<&KubeContext>) -> HashSet<String> {
+fn collect_tags(
+    shell: ShellType,
+    entries: &[String],
+    git: Option<&GitContext>,
+    kube: Option<&KubeContext>,
+) -> HashSet<String> {
     let mut tags: HashSet<String> = entries.iter().map(|name| name.to_lowercase()).collect();
     tags.insert(format!("{shell:?}").to_lowercase());
     if let Some(git) = git {
         tags.insert("git".into());
-        tags.extend(git.branches.iter().chain(&git.branch).map(|branch| branch.to_lowercase()));
-        let signals = [(git.changes > 0, ["stage", "commit"]), (git.ahead > 0, ["push", "remote"]), (git.behind > 0, ["pull", "merge"])];
-        tags.extend(signals.into_iter().filter(|(active, _)| *active).flat_map(|(_, names)| names.map(String::from)));
+        tags.extend(
+            git.branches
+                .iter()
+                .chain(&git.branch)
+                .map(|branch| branch.to_lowercase()),
+        );
+        let signals = [
+            (git.changes > 0, ["stage", "commit"]),
+            (git.ahead > 0, ["push", "remote"]),
+            (git.behind > 0, ["pull", "merge"]),
+        ];
+        tags.extend(
+            signals
+                .into_iter()
+                .filter(|(active, _)| *active)
+                .flat_map(|(_, names)| names.map(String::from)),
+        );
     }
     tags.extend(docker_tags(&tags).into_iter().map(String::from));
     if let Some(kube) = kube {
         tags.insert("kube".into());
-        tags.extend(kube.context.iter().chain(&kube.namespace).map(|name| name.to_lowercase()));
+        tags.extend(
+            kube.context
+                .iter()
+                .chain(&kube.namespace)
+                .map(|name| name.to_lowercase()),
+        );
     }
     tags
 }
 
-const COMPOSE_FILES: [&str; 4] = ["docker-compose.yml", "docker-compose.yaml", "compose.yml", "compose.yaml"];
+const COMPOSE_FILES: [&str; 4] = [
+    "docker-compose.yml",
+    "docker-compose.yaml",
+    "compose.yml",
+    "compose.yaml",
+];
 
 fn docker_tags(entries: &HashSet<String>) -> Vec<&'static str> {
     let mut tags = Vec::new();
@@ -89,7 +130,11 @@ pub fn summary(context: &ContextSnapshot, mode: ActiveMode) -> String {
         ),
         (ActiveMode::Kube, _, None) => "kube · no kubeconfig detected".into(),
         (ActiveMode::Docker, _, _) => {
-            let compose = if context.tags.contains("compose") { " · compose" } else { "" };
+            let compose = if context.tags.contains("compose") {
+                " · compose"
+            } else {
+                ""
+            };
             format!("docker · {}{compose}", folder_name(&context.cwd))
         }
         (os_mode, ..) => format!("{} · {}", os_mode.id(), folder_name(&context.cwd)),
@@ -97,5 +142,8 @@ pub fn summary(context: &ContextSnapshot, mode: ActiveMode) -> String {
 }
 
 fn folder_name(path: &Path) -> String {
-    path.file_name().map_or_else(|| path.display().to_string(), |name| name.to_string_lossy().into_owned())
+    path.file_name().map_or_else(
+        || path.display().to_string(),
+        |name| name.to_string_lossy().into_owned(),
+    )
 }

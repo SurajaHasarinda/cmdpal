@@ -1,12 +1,20 @@
-use super::{render, state::{AppState, StatusMessage}};
+use super::{
+    render,
+    state::{AppState, StatusMessage},
+};
 use crate::{clipboard::copy_to_clipboard, knowledge::Database, search::Searcher};
 use anyhow::{Context, Result};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
 
 const PAGE_SIZE: isize = 10;
 
-pub fn run(mut state: AppState, searcher: &Searcher, database: Option<&Database>) -> Result<AppState> {
-    let mut terminal = ratatui::try_init().context("cannot start the terminal UI (is stdout a terminal?)")?;
+pub fn run(
+    mut state: AppState,
+    searcher: &Searcher,
+    database: Option<&Database>,
+) -> Result<AppState> {
+    let mut terminal =
+        ratatui::try_init().context("cannot start the terminal UI (is stdout a terminal?)")?;
     let outcome = (|| -> Result<()> {
         while !state.should_quit {
             terminal.draw(|frame| render::draw(frame, &state))?;
@@ -22,7 +30,12 @@ pub fn run(mut state: AppState, searcher: &Searcher, database: Option<&Database>
     outcome.map(|()| state)
 }
 
-fn handle_key(state: &mut AppState, key: KeyEvent, searcher: &Searcher, database: Option<&Database>) {
+fn handle_key(
+    state: &mut AppState,
+    key: KeyEvent,
+    searcher: &Searcher,
+    database: Option<&Database>,
+) {
     let ctrl = key.modifiers.contains(KeyModifiers::CONTROL);
     if state.show_help {
         state.show_help = !matches!(key.code, KeyCode::Esc | KeyCode::Char('q' | '?'));
@@ -46,7 +59,9 @@ fn handle_key(state: &mut AppState, key: KeyEvent, searcher: &Searcher, database
         }),
         KeyCode::Char('?') if state.query.is_empty() => state.show_help = true,
         // Windows reports AltGr characters as Ctrl+Alt, so Alt keeps them typeable.
-        KeyCode::Char(character) if !ctrl || key.modifiers.contains(KeyModifiers::ALT) =>edit_query(state, searcher, |query| query.push(character)),
+        KeyCode::Char(character) if !ctrl || key.modifiers.contains(KeyModifiers::ALT) => {
+            edit_query(state, searcher, |query| query.push(character))
+        }
         _ => {}
     }
 }

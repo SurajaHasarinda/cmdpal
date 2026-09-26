@@ -22,11 +22,27 @@ pub struct Searcher {
 impl Searcher {
     pub fn new(commands: Vec<Command>, history: HashMap<String, Usage>) -> Self {
         let commands = commands.into_iter().map(IndexedCommand::new).collect();
-        Self { commands, history, ranker: Ranker::default(), engine: SearchEngine::new() }
+        Self {
+            commands,
+            history,
+            ranker: Ranker::default(),
+            engine: SearchEngine::new(),
+        }
     }
 
-    pub fn search(&self, query: &str, context: &ContextSnapshot, mode: ActiveMode) -> Vec<ScoredCommand> {
-        self.ranker.rank(query, &self.commands, context, &self.history, &self.engine, mode)
+    pub fn search(
+        &self,
+        query: &str,
+        context: &ContextSnapshot,
+        mode: ActiveMode,
+    ) -> Vec<ScoredCommand> {
+        self.ranker.rank(
+            query,
+            &self.commands,
+            context,
+            &self.history,
+            &self.engine,
+            mode,
+        )
     }
 }
-

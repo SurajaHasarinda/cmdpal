@@ -1,4 +1,8 @@
-use crate::{context::ContextSnapshot, modes::ActiveMode, search::{ScoredCommand, Searcher}};
+use crate::{
+    context::ContextSnapshot,
+    modes::ActiveMode,
+    search::{ScoredCommand, Searcher},
+};
 
 const EMPTY_QUERY_RESULTS: usize = 10;
 
@@ -20,7 +24,12 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(query: String, mode: ActiveMode, context: ContextSnapshot, searcher: &Searcher) -> Self {
+    pub fn new(
+        query: String,
+        mode: ActiveMode,
+        context: ContextSnapshot,
+        searcher: &Searcher,
+    ) -> Self {
         let mut state = Self {
             query,
             results: Vec::new(),

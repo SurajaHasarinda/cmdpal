@@ -1,7 +1,11 @@
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use rusqlite::{params, Connection};
-use std::{collections::HashMap, env, fs, path::{Path, PathBuf}};
+use std::{
+    collections::HashMap,
+    env, fs,
+    path::{Path, PathBuf},
+};
 
 const LAST_MODE_KEY: &str = "last_mode";
 const SCHEMA: &str = "
@@ -65,7 +69,11 @@ impl Database {
 
     pub fn last_mode(&self) -> Option<String> {
         self.conn
-            .query_row("SELECT value FROM meta WHERE key = ?1", [LAST_MODE_KEY], |row| row.get(0))
+            .query_row(
+                "SELECT value FROM meta WHERE key = ?1",
+                [LAST_MODE_KEY],
+                |row| row.get(0),
+            )
             .ok()
     }
 
@@ -78,15 +86,29 @@ impl Database {
     }
 
     pub fn usage_map(&self) -> Result<HashMap<String, Usage>> {
-        let mut statement = self.conn.prepare("SELECT command_id, use_count, last_used FROM usage")?;
+        let mut statement = self
+            .conn
+            .prepare("SELECT command_id, use_count, last_used FROM usage")?;
         let rows = statement.query_map([], |row| {
-            Ok((row.get::<_, String>(0)?, row.get::<_, i64>(1)?, row.get::<_, String>(2)?))
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, i64>(1)?,
+                row.get::<_, String>(2)?,
+            ))
         })?;
         Ok(rows
             .flatten()
             .filter_map(|(id, use_count, stamp)| {
-                let last_used = DateTime::parse_from_rfc3339(&stamp).ok()?.with_timezone(&Utc);
-                Some((id, Usage { use_count, last_used }))
+                let last_used = DateTime::parse_from_rfc3339(&stamp)
+                    .ok()?
+                    .with_timezone(&Utc);
+                Some((
+                    id,
+                    Usage {
+                        use_count,
+                        last_used,
+                    },
+                ))
             })
             .collect())
     }
@@ -119,9 +141,20 @@ mod tests {
     fn corrupt_file_is_replaced() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("db.sqlite");
-        fs::write(&path, "not a database, definitely longer than a sqlite header ........").unwrap();
+        fs::write(
+            &path,
+            "not a database, definitely longer than a sqlite header ........",
+        )
+        .unwrap();
         let db = Database::open(&path).unwrap();
         assert!(db.usage_map().unwrap().is_empty());
-        assert_eq!(fs::read_dir(dir.path()).unwrap().flatten().filter(|e| e.file_name().to_string_lossy().contains(".bak-")).count(), 1);
+        assert_eq!(
+            fs::read_dir(dir.path())
+                .unwrap()
+                .flatten()
+                .filter(|e| e.file_name().to_string_lossy().contains(".bak-"))
+                .count(),
+            1
+        );
     }
 }

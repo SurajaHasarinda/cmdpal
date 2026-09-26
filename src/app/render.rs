@@ -1,5 +1,9 @@
 use super::state::{AppState, StatusMessage};
-use crate::{context, knowledge::{Command, Danger}, modes::ActiveMode};
+use crate::{
+    context,
+    knowledge::{Command, Danger},
+    modes::ActiveMode,
+};
 use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::{Color, Modifier, Style, Stylize},
@@ -39,9 +43,19 @@ pub fn draw(frame: &mut Frame, state: &AppState) {
     ])
     .areas(area);
     frame.render_widget(header_line(state), header);
-    frame.render_widget(Line::from(vec!["> ".cyan().bold(), Span::raw(state.query.as_str()), "▏".dim()]), input);
+    frame.render_widget(
+        Line::from(vec![
+            "> ".cyan().bold(),
+            Span::raw(state.query.as_str()),
+            "▏".dim(),
+        ]),
+        input,
+    );
     draw_results(frame, state, results);
-    frame.render_widget(preview_lines(state).block(Block::new().borders(Borders::TOP)), preview);
+    frame.render_widget(
+        preview_lines(state).block(Block::new().borders(Borders::TOP)),
+        preview,
+    );
     frame.render_widget(status_line(state), status);
     if state.show_help {
         draw_help(frame, results);
@@ -65,7 +79,10 @@ fn header_line(state: &AppState) -> Line<'static> {
 
 fn draw_results(frame: &mut Frame, state: &AppState, area: Rect) {
     if state.results.is_empty() {
-        let message = format!("No match for \"{}\" — press Tab to try another mode; Esc to quit", state.query);
+        let message = format!(
+            "No match for \"{}\" — press Tab to try another mode; Esc to quit",
+            state.query
+        );
         frame.render_widget(Paragraph::new(message).dim(), area);
         return;
     }
@@ -74,15 +91,28 @@ fn draw_results(frame: &mut Frame, state: &AppState, area: Rect) {
         .iter()
         .map(|result| ListItem::new(result_row(&result.command, result.score, area.width)))
         .collect();
-    let list = List::new(items).highlight_style(Style::new().add_modifier(Modifier::REVERSED)).highlight_symbol("▶ ");
-    frame.render_stateful_widget(list, area, &mut ListState::default().with_selected(Some(state.selected)));
+    let list = List::new(items)
+        .highlight_style(Style::new().add_modifier(Modifier::REVERSED))
+        .highlight_symbol("▶ ");
+    frame.render_stateful_widget(
+        list,
+        area,
+        &mut ListState::default().with_selected(Some(state.selected)),
+    );
 }
 
 fn result_row(command: &Command, score: f32, width: u16) -> Line<'static> {
     let meta = format!("[{}] [{:?}] {score:.2}", command.mode, command.danger_level).to_lowercase();
     let command_width = (width as usize).saturating_sub(meta.chars().count() + 4);
-    let text: String = format!("{:<command_width$}", command.command).chars().take(command_width).collect();
-    Line::from(vec![Span::styled(text, danger_style(command.danger_level)), Span::raw(" "), meta.dim()])
+    let text: String = format!("{:<command_width$}", command.command)
+        .chars()
+        .take(command_width)
+        .collect();
+    Line::from(vec![
+        Span::styled(text, danger_style(command.danger_level)),
+        Span::raw(" "),
+        meta.dim(),
+    ])
 }
 
 fn danger_style(danger: Danger) -> Style {
@@ -104,7 +134,10 @@ fn preview_lines(state: &AppState) -> Paragraph<'static> {
         Danger::Low => Span::raw(""),
     };
     Paragraph::new(vec![
-        Line::from(placeholder_spans(&command.command, danger_style(command.danger_level))),
+        Line::from(placeholder_spans(
+            &command.command,
+            danger_style(command.danger_level),
+        )),
         Line::from(vec![Span::raw(command.description.clone()), warning]),
         Line::from(suggestions(command, state).dim()),
     ])
@@ -114,8 +147,14 @@ fn placeholder_spans(command: &str, base: Style) -> Vec<Span<'static>> {
     let mut spans = Vec::new();
     let mut cursor = 0;
     for found in PLACEHOLDER.find_iter(command) {
-        spans.push(Span::styled(command[cursor..found.start()].to_string(), base));
-        spans.push(Span::styled(found.as_str().to_string(), Style::new().fg(PLACEHOLDER_COLOR)));
+        spans.push(Span::styled(
+            command[cursor..found.start()].to_string(),
+            base,
+        ));
+        spans.push(Span::styled(
+            found.as_str().to_string(),
+            Style::new().fg(PLACEHOLDER_COLOR),
+        ));
         cursor = found.end();
     }
     spans.push(Span::styled(command[cursor..].to_string(), base));
@@ -145,13 +184,20 @@ fn suggestions(command: &Command, state: &AppState) -> String {
 
 fn status_line(state: &AppState) -> Line<'static> {
     match &state.status {
-        StatusMessage::Idle => Line::from(" ↑↓ select · Enter copy · Tab mode · ? help · Esc quit".dim()),
-        StatusMessage::Copied(text) => Line::from(format!(" Copied: {}", text.lines().last().unwrap_or_default()).green()),
+        StatusMessage::Idle => {
+            Line::from(" ↑↓ select · Enter copy · Tab mode · ? help · Esc quit".dim())
+        }
+        StatusMessage::Copied(text) => {
+            Line::from(format!(" Copied: {}", text.lines().last().unwrap_or_default()).green())
+        }
         StatusMessage::Error(error) => Line::from(format!(" Clipboard unavailable: {error}").red()),
     }
 }
 
 fn draw_help(frame: &mut Frame, area: Rect) {
     frame.render_widget(Clear, area);
-    frame.render_widget(Paragraph::new(HELP).block(Block::bordered().title(" help ")), area);
+    frame.render_widget(
+        Paragraph::new(HELP).block(Block::bordered().title(" help ")),
+        area,
+    );
 }
