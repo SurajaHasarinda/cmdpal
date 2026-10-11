@@ -1,10 +1,15 @@
 mod app;
 mod cli;
 mod clipboard;
+mod config;
 mod context;
+mod engine;
 mod knowledge;
+mod llm;
 mod modes;
 mod search;
+mod secrets;
+mod setup;
 
 use anyhow::{bail, Result};
 use app::{AppState, StatusMessage};
@@ -16,21 +21,28 @@ use search::Searcher;
 
 fn main() -> Result<()> {
     let cli = Cli::parse();
+    let config = config::load()?;
+    for warning in config::warnings(&config) {
+        eprintln!("config: {warning}");
+    }
+    if cli.setup {
+        return setup::run(&config);
+    }
     if cli.context {
         println!("{}", serde_json::to_string_pretty(&context::detect())?);
         return Ok(());
     }
-    run_palette(cli)
+    run_palette(cli, &config)
 }
 
-fn run_palette(cli: Cli) -> Result<()> {
+fn run_palette(cli: Cli, config: &config::Config) -> Result<()> {
     // History is a ranking nicety; a broken database must never block the palette.
     let database = Database::open_default().ok();
     let history = database
         .as_ref()
         .and_then(|db| db.usage_map().ok())
         .unwrap_or_default();
-    let searcher = Searcher::new(knowledge::load_builtin()?, history);
+    let searcher = Searcher::new(knowledge::load_builtin()?, history, &config.ranking);
     let remembered_mode = database
         .as_ref()
         .and_then(Database::last_mode)
@@ -39,21 +51,43 @@ fn run_palette(cli: Cli) -> Result<()> {
         .mode
         .or(remembered_mode)
         .unwrap_or(ActiveMode::for_current_os());
+    let engine = cli.engine(config.ai.default_engine);
     let context = context::detect();
-    let query = cli.query.join(" ");
+    let query = cli.query();
+
+    if engine.is_ai() {
+        return answer(config, &context, mode, &query);
+    }
 
     if let Some(position) = cli.pick {
         return print_pick(&searcher, &query, &context, mode, position, cli.verbose);
     }
     let state = app::run(
-        AppState::new(query, mode, context, &searcher),
+        AppState::new(query, mode, context, &searcher, engine, config),
         &searcher,
         database.as_ref(),
+        config,
     )?;
     if let Some(database) = &database {
         let _ = database.set_last_mode(state.mode.id());
     }
     report_clipboard_failure(&state);
+    Ok(())
+}
+
+/// Explicitly asked for, so a failure must surface instead of silently degrading.
+fn answer(
+    config: &config::Config,
+    context: &context::ContextSnapshot,
+    mode: ActiveMode,
+    query: &str,
+) -> Result<()> {
+    if query.trim().is_empty() {
+        bail!("--ai needs a query, e.g. cmdpal --ai \"undo the last commit\"");
+    }
+    let command = llm::ask(config, query, context, mode)?;
+    clipboard::copy_to_clipboard(&command)?;
+    println!("{command}");
     Ok(())
 }
 

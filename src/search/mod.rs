@@ -4,6 +4,7 @@ mod ranker;
 pub use ranker::ScoredCommand;
 
 use crate::{
+    config::Ranking,
     context::ContextSnapshot,
     knowledge::{Command, Usage},
     modes::ActiveMode,
@@ -20,12 +21,12 @@ pub struct Searcher {
 }
 
 impl Searcher {
-    pub fn new(commands: Vec<Command>, history: HashMap<String, Usage>) -> Self {
+    pub fn new(commands: Vec<Command>, history: HashMap<String, Usage>, ranking: &Ranking) -> Self {
         let commands = commands.into_iter().map(IndexedCommand::new).collect();
         Self {
             commands,
             history,
-            ranker: Ranker::default(),
+            ranker: Ranker::from(ranking),
             engine: SearchEngine::new(),
         }
     }

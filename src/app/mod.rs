@@ -1,4 +1,6 @@
+mod ai_view;
 mod events;
+mod help;
 mod render;
 mod state;
 

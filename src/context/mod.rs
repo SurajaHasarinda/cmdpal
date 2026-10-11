@@ -1,8 +1,11 @@
+pub(crate) mod gitlog;
+pub(crate) mod processes;
 mod providers;
 mod snapshot;
+pub(crate) mod tree;
 
 pub use providers::detect_shell;
-pub use snapshot::{ContextSnapshot, GitContext, KubeContext, ShellType};
+pub use snapshot::{ContextSnapshot, EnrichedContext, GitContext, KubeContext, ShellType};
 
 use crate::modes::ActiveMode;
 use std::{

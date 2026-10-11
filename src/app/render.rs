@@ -1,4 +1,7 @@
-use super::state::{AppState, StatusMessage};
+use super::{
+    ai_view, help,
+    state::{AppState, StatusMessage},
+};
 use crate::{
     context,
     knowledge::{Command, Danger},
@@ -8,24 +11,15 @@ use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::{Color, Modifier, Style, Stylize},
     text::{Line, Span},
-    widgets::{Block, Borders, Clear, List, ListItem, ListState, Paragraph},
+    widgets::{Block, Borders, List, ListItem, ListState, Paragraph},
     Frame,
 };
 use regex::Regex;
 use std::sync::LazyLock;
 
+pub(super) const PLACEHOLDER_COLOR: Color = Color::Indexed(208);
 const MIN_WIDTH: u16 = 60;
 const MIN_HEIGHT: u16 = 10;
-const PLACEHOLDER_COLOR: Color = Color::Indexed(208);
-const HELP: &str = "\
- ↑/↓ Ctrl+P/N   move selection        PageUp/PageDown  scroll ±10
- Enter          copy command          Ctrl+Y           copy with description
- Tab            cycle mode            Ctrl+U           clear query
- Esc Ctrl+C/G   quit without copying  ?                toggle this help
-
- Modes: default (shell/filesystem), git, kube. Commands from other modes are
- demoted, not hidden.                                      q / Esc closes help";
-
 static PLACEHOLDER: LazyLock<Regex> = LazyLock::new(|| Regex::new(r"\{[a-z_0-9]+\}").unwrap());
 
 pub fn draw(frame: &mut Frame, state: &AppState) {
@@ -51,14 +45,18 @@ pub fn draw(frame: &mut Frame, state: &AppState) {
         ]),
         input,
     );
-    draw_results(frame, state, results);
-    frame.render_widget(
-        preview_lines(state).block(Block::new().borders(Borders::TOP)),
-        preview,
-    );
+    if state.engine.is_ai() {
+        ai_view::draw(frame, state, results);
+    } else {
+        draw_results(frame, state, results);
+        frame.render_widget(
+            preview_lines(state).block(Block::new().borders(Borders::TOP)),
+            preview,
+        );
+    }
     frame.render_widget(status_line(state), status);
     if state.show_help {
-        draw_help(frame, results);
+        help::draw(frame, results);
     }
 }
 
@@ -70,11 +68,23 @@ fn header_line(state: &AppState) -> Line<'static> {
         ActiveMode::Kube => Color::Cyan,
         ActiveMode::Docker => Color::LightBlue,
     };
-    Line::from(vec![
+    let mut spans = vec![
         " cmdpal ".bold(),
         format!("[{}]", context::summary(&state.context, state.mode)).fg(badge_color),
-        "  Tab mode".dim(),
-    ])
+    ];
+    if state.engine.is_ai() {
+        spans.push(Span::styled(
+            format!(" AI:{} ", short_model(&state.model)),
+            Style::new().fg(Color::Magenta).add_modifier(Modifier::BOLD),
+        ));
+    } else {
+        spans.push(Span::raw("  Tab mode").dim());
+    }
+    Line::from(spans)
+}
+
+fn short_model(model: &str) -> &str {
+    model.rsplit('/').next().unwrap_or(model)
 }
 
 fn draw_results(frame: &mut Frame, state: &AppState, area: Rect) {
@@ -115,7 +125,7 @@ fn result_row(command: &Command, score: f32, width: u16) -> Line<'static> {
     ])
 }
 
-fn danger_style(danger: Danger) -> Style {
+pub(super) fn danger_style(danger: Danger) -> Style {
     match danger {
         Danger::High => Style::new().fg(Color::Red),
         Danger::Medium => Style::new().fg(PLACEHOLDER_COLOR),
@@ -143,7 +153,7 @@ fn preview_lines(state: &AppState) -> Paragraph<'static> {
     ])
 }
 
-fn placeholder_spans(command: &str, base: Style) -> Vec<Span<'static>> {
+pub(super) fn placeholder_spans(command: &str, base: Style) -> Vec<Span<'static>> {
     let mut spans = Vec::new();
     let mut cursor = 0;
     for found in PLACEHOLDER.find_iter(command) {
@@ -184,20 +194,16 @@ fn suggestions(command: &Command, state: &AppState) -> String {
 
 fn status_line(state: &AppState) -> Line<'static> {
     match &state.status {
+        StatusMessage::Idle if state.engine.is_ai() => {
+            Line::from(" Enter ask · Esc cancel · Ctrl+A offline · Ctrl+C quit".dim())
+        }
         StatusMessage::Idle => {
-            Line::from(" ↑↓ select · Enter copy · Tab mode · ? help · Esc quit".dim())
+            Line::from(" ↑↓ select · Enter copy · Tab mode · Ctrl+A ai · ? help · Esc quit".dim())
         }
         StatusMessage::Copied(text) => {
             Line::from(format!(" Copied: {}", text.lines().last().unwrap_or_default()).green())
         }
-        StatusMessage::Error(error) => Line::from(format!(" Clipboard unavailable: {error}").red()),
+        StatusMessage::Error(error) => Line::from(format!(" {error}").red()),
+        StatusMessage::Info(info) => Line::from(format!(" {info}").dim()),
     }
-}
-
-fn draw_help(frame: &mut Frame, area: Rect) {
-    frame.render_widget(Clear, area);
-    frame.render_widget(
-        Paragraph::new(HELP).block(Block::bordered().title(" help ")),
-        area,
-    );
 }

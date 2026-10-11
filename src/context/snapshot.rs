@@ -1,3 +1,5 @@
+use super::{gitlog, processes, tree};
+use crate::config::Context;
 use serde::Serialize;
 use std::{collections::HashSet, path::PathBuf};
 
@@ -36,4 +38,40 @@ pub struct ContextSnapshot {
     pub git: Option<GitContext>,
     pub kube: Option<KubeContext>,
     pub tags: HashSet<String>,
+}
+
+impl ContextSnapshot {
+    /// Built lazily: the offline path never pays for tree walks or subprocess probes.
+    pub fn enrich(&self, config: &Context) -> EnrichedContext {
+        let tree = config.include_fs.then(|| {
+            tree::walk(
+                &self.cwd,
+                &tree::TreeBudget {
+                    depth: config.max_depth,
+                    files: config.max_files,
+                },
+            )
+        });
+        let git = if config.include_git {
+            gitlog::collect(&self.cwd)
+        } else {
+            gitlog::GitDetail::default()
+        };
+        let processes = if config.include_kube || config.include_docker {
+            processes::collect(&self.cwd)
+        } else {
+            processes::ProcessContext::default()
+        };
+        EnrichedContext {
+            tree: tree.unwrap_or_default(),
+            git,
+            processes,
+        }
+    }
+}
+
+pub struct EnrichedContext {
+    pub tree: Vec<String>,
+    pub git: gitlog::GitDetail,
+    pub processes: processes::ProcessContext,
 }

@@ -1,5 +1,6 @@
 use super::engine::{tokenize, IndexedCommand, SearchEngine};
 use crate::{
+    config::Ranking,
     context::ContextSnapshot,
     knowledge::{Command, Usage},
     modes::ActiveMode,
@@ -20,16 +21,15 @@ pub struct Ranker {
     pub other_mode_demotion: f32,
 }
 
-impl Default for Ranker {
-    fn default() -> Self {
+impl From<&Ranking> for Ranker {
+    fn from(ranking: &Ranking) -> Self {
         Self {
-            tag_weight: 0.4,
-            usage_weight: 0.3,
-            recency_weight: 0.2,
-            mode_boost: 0.5,
-            // Match quality must outweigh base popularity, but stay low enough that usage history still counts.
-            match_weight: 3.0,
-            other_mode_demotion: 0.3,
+            tag_weight: ranking.tag_weight,
+            usage_weight: ranking.usage_weight,
+            recency_weight: ranking.recency_weight,
+            mode_boost: ranking.mode_boost,
+            match_weight: ranking.match_weight,
+            other_mode_demotion: ranking.demote_other_modes,
         }
     }
 }
