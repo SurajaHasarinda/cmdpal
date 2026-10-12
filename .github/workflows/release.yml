@@ -19,7 +19,7 @@ jobs:
             target: x86_64-pc-windows-msvc
             exe: cmdpal.exe
           - os: ubuntu-latest
-            target: x86_64-unknown-linux-musl
+            target: x86_64-unknown-linux-gnu
             exe: cmdpal
     runs-on: ${{ matrix.os }}
     steps:
@@ -41,9 +41,11 @@ jobs:
         with:
           key: ${{ matrix.target }}
 
-      - name: Install musl toolchain
-        if: matrix.target == 'x86_64-unknown-linux-musl'
-        run: sudo apt-get update && sudo apt-get install -y musl-tools
+      # keyring's secret-service backend compiles against the system libdbus (libdbus-sys);
+      # there is no musl build of libdbus, so the release targets glibc Linux.
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libdbus-1-dev pkg-config
 
       - run: cargo test --locked --target ${{ matrix.target }}
       - run: cargo build --release --locked --target ${{ matrix.target }}

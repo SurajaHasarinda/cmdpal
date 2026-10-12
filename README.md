@@ -18,7 +18,7 @@ Per-user, no admin rights, no Rust required.
 irm https://github.com/SurajaHasarinda/cmdpal/releases/latest/download/install.ps1 | iex
 ```
 
-**Linux** (x86_64, any distro):
+**Linux** (x86_64, glibc — Ubuntu/Debian/Fedora/Arch …):
 
 ```sh
 curl -fsSL https://github.com/SurajaHasarinda/cmdpal/releases/latest/download/install.sh | sh

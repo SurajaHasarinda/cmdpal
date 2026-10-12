@@ -10,7 +10,7 @@
 set -eu
 
 REPO="${CMDPAL_REPO:-SurajaHasarinda/cmdpal}"
-ARCHIVE="cmdpal-x86_64-unknown-linux-musl.tar.gz"
+ARCHIVE="cmdpal-x86_64-unknown-linux-gnu.tar.gz"
 
 say() { printf '==> %s\n' "$*"; }
 die() { printf 'error: %s\n' "$*" >&2; exit 1; }
