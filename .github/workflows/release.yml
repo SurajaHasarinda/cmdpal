@@ -169,7 +169,25 @@ jobs:
         continue-on-error: true
         with:
           subject-path: dist/cmdpal-*
+      # The releases API intermittently answers 500, so retry with backoff. The
+      # step is also idempotent: if the release already exists, repair it rather
+      # than failing, which makes a re-run safe.
       - name: Create release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" --title "$GITHUB_REF_NAME" --generate-notes
+        run: |
+          for attempt in 1 2 3 4 5; do
+            if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              echo "release $GITHUB_REF_NAME already exists — refreshing assets"
+              gh release upload "$GITHUB_REF_NAME" dist/* --clobber --repo "$GITHUB_REPOSITORY"
+              exit 0
+            fi
+            if gh release create "$GITHUB_REF_NAME" dist/* --repo "$GITHUB_REPOSITORY" \
+                 --title "$GITHUB_REF_NAME" --generate-notes; then
+              exit 0
+            fi
+            echo "::warning::attempt $attempt to create the release failed; retrying"
+            sleep $((attempt * 10))
+          done
+          echo "::error::could not publish $GITHUB_REF_NAME after 5 attempts"
+          exit 1
