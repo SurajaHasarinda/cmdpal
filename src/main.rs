@@ -13,7 +13,7 @@ mod secrets;
 mod setup;
 
 use anyhow::{bail, Result};
-use app::{AppState, StatusMessage};
+use app::AppState;
 use clap::Parser;
 use cli::{Cli, Intent};
 use knowledge::Database;
@@ -73,7 +73,6 @@ fn run_palette(cli: Cli, config: &config::Config) -> Result<()> {
     if let Some(database) = &database {
         let _ = database.set_last_mode(state.mode.id());
     }
-    report_clipboard_failure(&state);
     Ok(())
 }
 
@@ -84,9 +83,7 @@ fn answer(
     query: &str,
 ) -> Result<()> {
     let command = llm::ask(config, query, context, mode)?;
-    if let Err(error) = clipboard::copy_to_clipboard(&command) {
-        eprintln!("Clipboard unavailable: {error}");
-    }
+    let _ = clipboard::copy_to_clipboard(&command);
     println!("{command}");
     Ok(())
 }
@@ -118,15 +115,4 @@ fn print_pick(
     let candidates = resolve::Candidates::new(context, &processes);
     println!("{}", resolve::resolve(&picked.command, &candidates));
     Ok(())
-}
-
-fn report_clipboard_failure(state: &AppState) {
-    let StatusMessage::Error(error) = &state.status else {
-        return;
-    };
-    let command = state
-        .selected_result()
-        .map(|result| result.command.command.as_str())
-        .unwrap_or_default();
-    eprintln!("Clipboard unavailable: {error}\n{command}");
 }
