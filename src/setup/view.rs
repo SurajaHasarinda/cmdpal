@@ -86,9 +86,14 @@ fn content(step: &Step, draft: &Draft) -> Vec<Line<'static>> {
                 draft.model.clone()
             };
             lines.push(field("Model", &model));
-            lines.push(Line::from(
-                " Stored in the OS credential store, never in config.toml.".dim(),
-            ));
+            lines.push(Line::from(match crate::secrets::backend() {
+                crate::secrets::Backend::Keyring => {
+                    " Stored in the OS credential store, never in config.toml.".dim()
+                }
+                crate::secrets::Backend::File => {
+                    " No OS credential store here — saved to a private file, not config.toml.".dim()
+                }
+            }));
             lines.push(Line::from(
                 if draft.key_prefilled {
                     " Enter keeps the saved key — type to replace it."

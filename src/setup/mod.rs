@@ -25,7 +25,7 @@ enum Field {
 
 pub fn run(config: &Config) -> Result<()> {
     if !secrets::available() {
-        bail!("no OS credential store available — the API key cannot be stored securely here");
+        bail!("no OS credential store and no config directory — the API key cannot be stored here");
     }
     let mut terminal = try_init()?;
     let saved_key = secrets::load().map(|key| key.to_string());
@@ -63,14 +63,21 @@ fn initial_draft(config: &Config, saved_key: Option<String>) -> Draft {
 }
 
 fn persist(config: &Config, draft: &Draft) -> Result<()> {
-    secrets::store(&draft.key)?;
+    let backend = secrets::store(&draft.key)?;
     let mut updated = config.clone();
     updated.ai.base_url = draft.base_url.clone();
     updated.ai.model = draft.model.clone();
     updated.clamp();
     let file = config::save(&updated)?;
     println!("Saved {}", file.display());
-    println!("API key stored in the OS credential store.");
+    match backend {
+        secrets::Backend::Keyring => println!("API key stored in the OS credential store."),
+        secrets::Backend::File => println!(
+            "No OS credential store on this machine, so the API key was saved to {}.\n\
+             It is readable by anything running as this user. Keep that in mind on shared hosts.",
+            secrets::file_path().unwrap_or_default().display()
+        ),
+    }
     Ok(())
 }
 
