@@ -5,7 +5,7 @@ const KUBECTL: &str = "kubectl";
 const MAX_LINES: usize = 25;
 const MAX_LINE_LEN: usize = 200;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub struct ProcessContext {
     pub containers: Vec<String>,
     pub images: Vec<String>,
@@ -16,8 +16,10 @@ pub struct ProcessContext {
 
 pub fn collect(cwd: &Path) -> ProcessContext {
     ProcessContext {
+        // One field per line: a tab-joined format would be stripped by sanitize_line
+        // (tabs are control characters) and glue the fields into one bogus entry.
         containers: if which(DOCKER).is_some() {
-            docker(&["ps", "--format", "{{.Names}}\t{{.Image}}\t{{.Status}}"])
+            docker(&["ps", "--format", "{{.Names}}"])
         } else {
             Vec::new()
         },

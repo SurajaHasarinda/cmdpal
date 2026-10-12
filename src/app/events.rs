@@ -3,7 +3,8 @@ use super::{
     state::{AppState, StatusMessage},
 };
 use crate::{
-    clipboard::copy_to_clipboard, config::Config, knowledge::Database, llm, search::Searcher,
+    clipboard::copy_to_clipboard, config::Config, knowledge::Database, llm, resolve,
+    search::Searcher,
 };
 use anyhow::{Context as _, Result};
 use crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind, KeyModifiers};
@@ -29,6 +30,10 @@ pub fn run(
     let mut answers: Option<Answers> = None;
     let outcome = (|| -> Result<()> {
         while !state.should_quit {
+            // Collect placeholder sources before drawing so the preview shows the
+            // resolved command. Cached after the first hit, so this is a cheap
+            // check rather than a subprocess per frame.
+            state.ensure_processes();
             terminal.draw(|frame| render::draw(frame, &state))?;
             if event::poll(TICK)? {
                 if let Event::Key(key) = event::read()? {
@@ -149,13 +154,15 @@ fn copy_selected(state: &mut AppState, database: Option<&Database>, with_descrip
     if state.engine.is_ai() {
         return copy_ai(state);
     }
+    state.ensure_processes();
     let Some(selected) = state.selected_result() else {
         return;
     };
     let command = &selected.command;
+    let resolved = resolve::resolve(command, &state.candidates());
     let text = match with_description {
-        true => format!("# {}\n{}", command.description, command.command),
-        false => command.command.clone(),
+        true => format!("# {}\n{}", command.description, resolved),
+        false => resolved,
     };
     let id = command.id.clone();
     state.status = match copy_to_clipboard(&text) {

@@ -7,6 +7,7 @@ mod engine;
 mod knowledge;
 mod llm;
 mod modes;
+mod resolve;
 mod search;
 mod secrets;
 mod setup;
@@ -109,7 +110,15 @@ fn print_pick(
             picked.command.id, picked.score, picked.breakdown
         );
     }
-    println!("{}", picked.command.command);
+    // Process facts are subprocesses, so collect them only when this command
+    // actually has a placeholder that needs them.
+    let processes = if resolve::needs_processes(&picked.command) {
+        context::processes::collect(&context.cwd)
+    } else {
+        context::ProcessContext::default()
+    };
+    let candidates = resolve::Candidates::new(context, &processes);
+    println!("{}", resolve::resolve(&picked.command, &candidates));
     Ok(())
 }
 

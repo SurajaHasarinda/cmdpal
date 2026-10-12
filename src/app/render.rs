@@ -6,6 +6,7 @@ use crate::{
     context,
     knowledge::{Command, Danger},
     modes::ActiveMode,
+    resolve,
 };
 use ratatui::{
     layout::{Constraint, Layout, Rect},
@@ -143,9 +144,11 @@ fn preview_lines(state: &AppState) -> Paragraph<'static> {
         Danger::Medium => "  ⚠ medium risk".fg(PLACEHOLDER_COLOR),
         Danger::Low => Span::raw(""),
     };
+    // Show what Enter will actually copy, not the raw template.
+    let resolved = resolve::resolve(command, &state.candidates());
     Paragraph::new(vec![
         Line::from(placeholder_spans(
-            &command.command,
+            &resolved,
             danger_style(command.danger_level),
         )),
         Line::from(vec![Span::raw(command.description.clone()), warning]),

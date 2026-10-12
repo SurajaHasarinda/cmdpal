@@ -4,6 +4,7 @@ mod providers;
 mod snapshot;
 pub(crate) mod tree;
 
+pub use processes::ProcessContext;
 pub use providers::detect_shell;
 pub use snapshot::{ContextSnapshot, EnrichedContext, GitContext, KubeContext, ShellType};
 

@@ -1,12 +1,23 @@
 use crate::{
     config::Config,
-    context::ContextSnapshot,
+    context::{processes, ContextSnapshot, ProcessContext},
     engine::Engine,
     modes::ActiveMode,
+    resolve::Candidates,
+    resolve::{self},
     search::{ScoredCommand, Searcher},
 };
 
 const EMPTY_QUERY_RESULTS: usize = 10;
+
+/// Borrowed placeholder source before any collection has happened.
+static EMPTY: ProcessContext = ProcessContext {
+    containers: Vec::new(),
+    images: Vec::new(),
+    networks: Vec::new(),
+    compose_services: Vec::new(),
+    kube_config: Vec::new(),
+};
 
 pub enum StatusMessage {
     Idle,
@@ -34,6 +45,8 @@ pub struct AppState {
     pub status: StatusMessage,
     pub ai: AiState,
     pub model: String,
+    /// Lazily collected process facts; `None` until a placeholder needs them.
+    processes: Option<ProcessContext>,
 }
 
 impl AppState {
@@ -57,6 +70,7 @@ impl AppState {
             status: StatusMessage::Idle,
             ai: AiState::Idle,
             model: config.ai.model.clone(),
+            processes: None,
         };
         state.refresh(searcher);
         state
@@ -120,6 +134,29 @@ impl AppState {
 
     pub fn selected_result(&self) -> Option<&ScoredCommand> {
         self.results.get(self.selected)
+    }
+
+    /// Placeholder values for the selected command.
+    ///
+    /// `docker ps` and friends are subprocesses, so they are collected at most
+    /// once per session and only when the selected command has a placeholder that
+    /// needs them — a plain `git status` spawns nothing.
+    pub fn ensure_processes(&mut self) {
+        if self.processes.is_some() {
+            return;
+        }
+        let needed = self
+            .selected_result()
+            .is_some_and(|selected| resolve::needs_processes(&selected.command));
+        self.processes = Some(if needed {
+            processes::collect(&self.context.cwd)
+        } else {
+            ProcessContext::default()
+        });
+    }
+
+    pub fn candidates(&self) -> Candidates<'_> {
+        Candidates::new(&self.context, self.processes.as_ref().unwrap_or(&EMPTY))
     }
 
     pub fn move_selection(&mut self, delta: isize) {
