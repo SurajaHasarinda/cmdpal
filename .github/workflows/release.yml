@@ -42,13 +42,17 @@ jobs:
 
       # keyring's secret-service backend compiles against the system libdbus (libdbus-sys);
       # there is no musl build of libdbus, so the release targets glibc Linux.
+      # build-essential gives Rust its linker; libdbus-1-dev/pkg-config serve
+      # keyring's secret-service backend; zlib1g-dev serves vendored libgit2.
       # Must precede the toolchain action, which needs curl to install rustup.
       # Container jobs run as root, so there is no sudo here.
       - name: Install Linux build dependencies
         if: runner.os == 'Linux'
         run: |
           apt-get update
-          apt-get install -y --no-install-recommends binutils ca-certificates curl git libdbus-1-dev pkg-config
+          apt-get install -y --no-install-recommends \
+            binutils build-essential ca-certificates curl git \
+            libdbus-1-dev pkg-config zlib1g-dev
 
       - uses: dtolnay/rust-toolchain@stable
         with:
