@@ -40,21 +40,22 @@ jobs:
             exit 1
           fi
 
+      # keyring's secret-service backend compiles against the system libdbus (libdbus-sys);
+      # there is no musl build of libdbus, so the release targets glibc Linux.
+      # Must precede the toolchain action, which needs curl to install rustup.
+      # Container jobs run as root, so there is no sudo here.
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends binutils ca-certificates curl git libdbus-1-dev pkg-config
+
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
       - uses: Swatinem/rust-cache@v2
         with:
           key: ${{ matrix.target }}
-
-      # keyring's secret-service backend compiles against the system libdbus (libdbus-sys);
-      # there is no musl build of libdbus, so the release targets glibc Linux.
-      # Container jobs run as root, so there is no sudo here.
-      - name: Install Linux build dependencies
-        if: runner.os == 'Linux'
-        run: |
-          apt-get update
-          apt-get install -y --no-install-recommends binutils ca-certificates git libdbus-1-dev pkg-config
 
       - run: cargo test --locked --target ${{ matrix.target }}
       - run: cargo build --release --locked --target ${{ matrix.target }}
