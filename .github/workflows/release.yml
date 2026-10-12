@@ -19,9 +19,15 @@ jobs:
             target: x86_64-pc-windows-msvc
             exe: cmdpal.exe
           - os: ubuntu-latest
+            # The Linux binary is linked against the glibc of the machine that builds it.
+            # ubuntu-latest carries glibc 2.39, which refuses to run on Ubuntu 20.04 (2.31).
+            # Building in a 20.04 container pins the baseline to glibc 2.31, which still
+            # runs on 20.04, 22.04, 24.04, Debian 11+ and RHEL 9+.
+            container: ubuntu:20.04
             target: x86_64-unknown-linux-gnu
             exe: cmdpal
     runs-on: ${{ matrix.os }}
+    container: ${{ matrix.container }}
     steps:
       - uses: actions/checkout@v4
 
@@ -43,12 +49,28 @@ jobs:
 
       # keyring's secret-service backend compiles against the system libdbus (libdbus-sys);
       # there is no musl build of libdbus, so the release targets glibc Linux.
+      # Container jobs run as root, so there is no sudo here.
       - name: Install Linux build dependencies
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y libdbus-1-dev pkg-config
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends binutils ca-certificates git libdbus-1-dev pkg-config
 
       - run: cargo test --locked --target ${{ matrix.target }}
       - run: cargo build --release --locked --target ${{ matrix.target }}
+
+      # A binary linked on a newer glibc dies at startup on older servers with
+      # "GLIBC_x.y not found". Assert the ceiling so that stays caught in CI.
+      - name: Verify glibc baseline
+        if: runner.os == 'Linux'
+        run: |
+          bin="target/${{ matrix.target }}/release/cmdpal"
+          max=$(objdump -T "$bin" | grep -o 'GLIBC_[0-9.]*' | sort -uV | tail -1)
+          echo "binary needs glibc up to $max (baseline GLIBC_2.31)"
+          if [ "$(printf '%s\n' GLIBC_2.31 "$max" | sort -V | tail -1)" != GLIBC_2.31 ]; then
+            echo "::error::$bin requires $max, newer than the GLIBC_2.31 baseline"
+            exit 1
+          fi
 
       - name: Package
         shell: bash

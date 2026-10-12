@@ -26,7 +26,7 @@ cmdpal "find the running ports"           # → answered by the model, copied
 irm https://github.com/SurajaHasarinda/cmdpal/releases/latest/download/install.ps1 | iex
 ```
 
-**Linux** (x86_64, glibc — Ubuntu/Debian/Fedora/Arch …):
+**Linux** (x86_64, glibc 2.31 or newer — Ubuntu 20.04+, Debian 11+, RHEL 9+, Fedora, Arch):
 
 ```sh
 curl -fsSL https://github.com/SurajaHasarinda/cmdpal/releases/latest/download/install.sh | sh
