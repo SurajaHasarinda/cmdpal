@@ -1,6 +1,9 @@
 mod engine;
 mod ranker;
 
+#[cfg(test)]
+mod accuracy;
+
 pub use ranker::ScoredCommand;
 
 use crate::{

@@ -15,7 +15,7 @@ mod setup;
 use anyhow::{bail, Result};
 use app::{AppState, StatusMessage};
 use clap::Parser;
-use cli::Cli;
+use cli::{Cli, Intent};
 use knowledge::Database;
 use modes::ActiveMode;
 use search::Searcher;
@@ -52,19 +52,22 @@ fn run_palette(cli: Cli, config: &config::Config) -> Result<()> {
         .mode
         .or(remembered_mode)
         .unwrap_or(ActiveMode::for_current_os());
-    let engine = cli.engine(config.ai.default_engine);
     let context = context::detect();
     let query = cli.query();
 
-    if engine.is_ai() {
-        return answer(config, &context, mode, &query);
+    // The shape of the invocation picks the surface: --pick stays on the offline
+    // catalog for scripts, a query means "ask the model", and anything else opens
+    // the console. The engine is never a flag, so a bare `cmdpal` always works.
+    match cli.intent() {
+        Intent::Pick(position) => {
+            return print_pick(&searcher, &query, &context, mode, position, cli.verbose);
+        }
+        Intent::Ask => return answer(config, &context, cli.mode, &query),
+        Intent::Console => {}
     }
 
-    if let Some(position) = cli.pick {
-        return print_pick(&searcher, &query, &context, mode, position, cli.verbose);
-    }
     let state = app::run(
-        AppState::new(query, mode, context, &searcher, engine, config),
+        AppState::new(query, mode, context, &searcher, config),
         &searcher,
         database.as_ref(),
         config,
@@ -76,16 +79,14 @@ fn run_palette(cli: Cli, config: &config::Config) -> Result<()> {
     Ok(())
 }
 
-/// Explicitly asked for, so a failure must surface instead of silently degrading.
+/// A query was typed, so the model answers. Failures surface instead of
+/// silently degrading, because this is what the user explicitly asked for.
 fn answer(
     config: &config::Config,
     context: &context::ContextSnapshot,
-    mode: ActiveMode,
+    mode: Option<ActiveMode>,
     query: &str,
 ) -> Result<()> {
-    if query.trim().is_empty() {
-        bail!("--ai needs a query, e.g. cmdpal --ai \"undo the last commit\"");
-    }
     let command = llm::ask(config, query, context, mode)?;
     clipboard::copy_to_clipboard(&command)?;
     println!("{command}");

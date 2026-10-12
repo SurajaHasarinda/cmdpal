@@ -1,4 +1,3 @@
-use crate::engine::Engine;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 
@@ -17,7 +16,6 @@ pub struct Config {
 #[derive(Deserialize, Serialize, Clone, Debug)]
 #[serde(default)]
 pub struct Ai {
-    pub default_engine: Engine,
     pub base_url: String,
     pub model: String,
     pub timeout_secs: u64,
@@ -29,7 +27,6 @@ pub struct Ai {
 impl Default for Ai {
     fn default() -> Self {
         Self {
-            default_engine: Engine::Offline,
             base_url: GOOGLE_BASE_URL.into(),
             model: String::new(),
             timeout_secs: 20,

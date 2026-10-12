@@ -20,7 +20,7 @@ pub fn prompt_for(
     config: &Config,
     query: String,
     snapshot: &ContextSnapshot,
-    mode: ActiveMode,
+    mode: Option<ActiveMode>,
 ) -> Option<Prompt> {
     let key = crate::secrets::load()?;
     let system = if config.ai.system_prompt.is_empty() {
@@ -41,7 +41,7 @@ pub fn ask(
     config: &Config,
     query: &str,
     snapshot: &ContextSnapshot,
-    mode: ActiveMode,
+    mode: Option<ActiveMode>,
 ) -> Result<String> {
     let prompt = prompt_for(config, query.to_string(), snapshot, mode).ok_or(Error::MissingKey)?;
     let client = Client::from_config(config)?;

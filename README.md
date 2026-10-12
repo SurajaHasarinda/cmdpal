@@ -3,9 +3,10 @@
 A command palette for your terminal. Describe what you want in plain language, get the exact command on your clipboard. It never runs anything.
 
 ```
-cmdpal delete directory          # → Remove-Item -Recurse -Force {path}
-cmdpal -m git undo last commit   # → git reset --soft HEAD~1
-cmdpal -m docker shell into container
+cmdpal                                    # open the console, search as you type
+cmdpal --pick 1 "delete directory"        # → Remove-Item -Recurse -Force {path}
+cmdpal --pick 1 -m git "undo last commit" # → git reset --soft HEAD~1
+cmdpal "find the running ports"           # → answered by the model, copied
 ```
 
 ## Features
@@ -43,38 +44,47 @@ You can also build from source with `cargo install --git https://github.com/Sura
 
 ## Use
 
-```
-cmdpal [-m <mode>] [--ai] [query...]
+The shape of your command picks what happens — there is no engine flag.
+
+```bash
+cmdpal                            # open the console
+cmdpal -m docker                  # open the console in docker mode
+cmdpal "find the running ports"   # ask the model, copy the answer, exit
+cmdpal --pick 1 "delete dir"      # offline lookup for scripts
 ```
 
-Start typing and results update as you go. Pick one with `↑` `↓` and press `Enter` to copy it.
+**In the console** start typing and results update as you go. Pick one with `↑` `↓` and press `Enter` to copy it.
 
 | Key | Action |
 |---|---|
 | `↑` `↓` | move selection |
 | `Enter` | copy the command and quit |
 | `Tab` | next mode |
-| `Ctrl+A` | toggle AI mode |
+| `Ctrl+A` | toggle to the AI engine |
 | `?` | help |
 | `Esc` / `Ctrl+C` | quit |
 
-`-m` picks a mode for one run, for example `cmdpal -m git`. Without it, cmdpal reopens in the mode you last used.
-
-Useful flags:
+`-m` scopes the console for one run, for example `cmdpal -m git`. Without it, cmdpal reopens in the mode you last used.
 
 | Flag | Does |
 |---|---|
-| `--setup` | configure the API key and AI settings |
-| `--ai` | answer with AI instead of the catalog |
-| `--pick N` | print result N and exit, for scripts |
+| `--setup` | configure the API key, URL and model |
+| `--pick N` | print result N from the catalog and exit, for scripts |
+| `--verbose` | with `--pick`, show the score breakdown |
 | `--context` | show the environment cmdpal detected |
 
 ## AI mode
 
-Run `cmdpal --setup` and choose **AI** to store an API key. Any OpenAI-compatible service works. The key is kept in your operating system's credential store, never in a plain config file.
+Run `cmdpal --setup` once to store an API key. Any OpenAI-compatible service works. The key is kept in your operating system's credential store, never in a plain config file.
 
-Then press `Ctrl+A` inside the palette to switch engines — the catalog and the model are both one keystroke away, so you decide when to spend a request.
+After that, giving cmdpal a query is what asks the model — there is no flag to remember:
 
-AI mode sends your working directory, file tree, git state and containers so the answer fits your machine. Ask before using it if that matters to you; `cmdpal --context` shows exactly what gets shared.
+```bash
+cmdpal "find the running ports"    # → docker port itembank-postgres
+```
+
+Inside the console, `Ctrl+A` switches engines, so the catalog and the model are one keystroke apart and you decide when to spend a request. The console itself always starts on the free, instant catalog.
+
+The model is told your working directory, file tree, git state and containers so the answer fits your machine. `cmdpal --context` shows exactly what gets shared.
 
 MIT licensed.

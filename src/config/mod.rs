@@ -1,6 +1,5 @@
 mod model;
 
-pub use crate::engine::Engine;
 pub use model::{Config, Context, Ranking, GOOGLE_BASE_URL};
 
 use anyhow::{Context as _, Result};
@@ -62,11 +61,6 @@ fn apply_env(config: &mut Config) {
     if let Ok(base_url) = env::var("CMDPAL_AI_BASE_URL") {
         config.ai.base_url = base_url;
     }
-    if let Ok(engine) = env::var("CMDPAL_ENGINE") {
-        if engine.eq_ignore_ascii_case("ai") {
-            config.ai.default_engine = Engine::Ai;
-        }
-    }
 }
 
 #[cfg(test)]
@@ -83,7 +77,8 @@ mod tests {
     #[test]
     fn missing_file_yields_defaults() {
         let config = Config::default();
-        assert_eq!(config.ai.default_engine, Engine::Offline);
+        assert!(config.ai.model.is_empty());
+        assert_eq!(config.ai.base_url, GOOGLE_BASE_URL);
         assert_eq!(config.ranking.match_weight, 3.0);
     }
 

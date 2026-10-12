@@ -119,8 +119,12 @@ fn dispatch(state: &mut AppState, config: &Config, answers: Option<Answers>) -> 
         state.apply_ai(Err("type a request first".into()));
         return answers;
     }
-    let Some(prompt) = llm::prompt_for(config, state.query.clone(), &state.context, state.mode)
-    else {
+    let Some(prompt) = llm::prompt_for(
+        config,
+        state.query.clone(),
+        &state.context,
+        Some(state.mode),
+    ) else {
         state.apply_ai(Err(llm::Error::MissingKey.to_string()));
         return answers;
     };

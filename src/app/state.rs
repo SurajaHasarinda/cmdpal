@@ -55,7 +55,6 @@ impl AppState {
         mode: ActiveMode,
         context: ContextSnapshot,
         searcher: &Searcher,
-        engine: Engine,
         config: &Config,
     ) -> Self {
         let mut state = Self {
@@ -63,7 +62,9 @@ impl AppState {
             results: Vec::new(),
             selected: 0,
             mode,
-            engine,
+            // The console always starts on the offline catalog; Ctrl+A switches to
+            // the model mid-session. Engine choice is never a startup concern.
+            engine: Engine::Offline,
             context,
             should_quit: false,
             show_help: false,

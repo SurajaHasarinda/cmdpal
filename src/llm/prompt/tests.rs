@@ -28,15 +28,25 @@ fn empty() -> EnrichedContext {
 
 #[test]
 fn environment_is_always_present() {
-    let rendered = render(&snapshot(), &empty(), ActiveMode::Git);
-    assert!(rendered.contains("active_mode: git"));
+    let rendered = render(&snapshot(), &empty(), Some(ActiveMode::Git));
+    assert!(rendered.contains("requested_mode: git"));
     assert!(rendered.contains("D:/repos/app"));
     assert!(rendered.contains("shell: powershell"));
 }
 
 #[test]
+fn a_bare_query_omits_the_mode_line() {
+    let rendered = render(&snapshot(), &empty(), None);
+    assert!(!rendered.contains("requested_mode"));
+    // The live context still describes the machine, so the model is never blind.
+    assert!(rendered.contains("os: "));
+    assert!(rendered.contains("shell: powershell"));
+    assert!(rendered.contains("working_directory: "));
+}
+
+#[test]
 fn empty_sections_are_omitted() {
-    let rendered = render(&snapshot(), &empty(), ActiveMode::Git);
+    let rendered = render(&snapshot(), &empty(), Some(ActiveMode::Git));
     assert!(!rendered.contains("# docker"));
     assert!(!rendered.contains("# filesystem"));
 }
@@ -47,7 +57,7 @@ fn git_section_carries_branch_history_and_changes() {
     enriched.git.is_repo = true;
     enriched.git.commits = vec!["abc1234 fix crash".into()];
     enriched.git.changed_paths = vec!["src/main.rs".into()];
-    let rendered = render(&snapshot(), &enriched, ActiveMode::Git);
+    let rendered = render(&snapshot(), &enriched, Some(ActiveMode::Git));
     assert!(rendered.contains("branch: main"));
     assert!(rendered.contains("abc1234 fix crash"));
     assert!(rendered.contains("src/main.rs"));
@@ -56,11 +66,11 @@ fn git_section_carries_branch_history_and_changes() {
 #[test]
 fn docker_section_lists_runtime_state() {
     let mut enriched = empty();
-    enriched.processes.containers = vec!["web\tnginx\tUp 2h".into()];
+    enriched.processes.containers = vec!["web".into()];
     enriched.processes.images = vec!["nginx:latest".into()];
     enriched.processes.networks = vec!["bridge".into()];
     enriched.processes.compose_services = vec!["web".into()];
-    let rendered = render(&snapshot(), &enriched, ActiveMode::Docker);
+    let rendered = render(&snapshot(), &enriched, Some(ActiveMode::Docker));
     assert!(rendered.contains("containers:"));
     assert!(rendered.contains("nginx:latest"));
     assert!(rendered.contains("bridge"));
@@ -72,7 +82,7 @@ fn user_turn_is_delimited_and_ends_with_the_request() {
     let prompt = user_turn(
         "delete a branch",
         &snapshot(),
-        ActiveMode::Git,
+        Some(ActiveMode::Git),
         &Config::default(),
     );
     assert!(prompt.starts_with("<context>"));

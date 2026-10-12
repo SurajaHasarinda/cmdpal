@@ -1,4 +1,3 @@
-use crate::engine::Engine;
 use clap::Parser;
 
 #[derive(Parser, Debug)]
@@ -8,17 +7,9 @@ use clap::Parser;
     about = "Terminal command palette: cmdpal [-m <mode>] [query...]"
 )]
 pub struct Cli {
-    /// Start in this mode (default: the mode you last quit in, else the one matching this OS)
+    /// Start the console in this mode (default: the mode you last quit in, else the one matching your OS)
     #[arg(short, long, value_enum)]
     pub mode: Option<crate::modes::ActiveMode>,
-
-    /// Answer with the configured LLM instead of the offline catalog
-    #[arg(long)]
-    pub ai: bool,
-
-    /// Force an engine regardless of configuration
-    #[arg(long, value_enum, conflicts_with = "ai")]
-    pub engine: Option<Engine>,
 
     /// Configure the API key, base URL and model, then exit
     #[arg(long)]
@@ -36,8 +27,21 @@ pub struct Cli {
     #[arg(long)]
     pub context: bool,
 
-    /// Search query (the words are joined with spaces)
+    /// Search query (the words are joined with spaces). A query means "ask the model and exit".
     pub query: Vec<String>,
+}
+
+/// What the invocation asks for. Engine selection is not a flag: the *shape* of
+/// the command decides it, so `cmdpal` can never end up unable to open the
+/// console and `cmdpal "..."` never needs `--ai` to reach the model.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Intent {
+    /// No query: open the interactive console.
+    Console,
+    /// A query was given: answer with the model, copy, and exit.
+    Ask,
+    /// --pick: search the offline catalog and print, for scripts.
+    Pick(usize),
 }
 
 impl Cli {
@@ -45,45 +49,70 @@ impl Cli {
         self.query.join(" ")
     }
 
-    pub fn engine(&self, configured: Engine) -> Engine {
-        self.engine
-            .unwrap_or(if self.ai { Engine::Ai } else { configured })
+    /// `--pick` wins over a query so scripted lookups stay on the offline catalog
+    /// even when words were passed for the search.
+    pub fn intent(&self) -> Intent {
+        match self.pick {
+            Some(position) => Intent::Pick(position),
+            None if self.query().trim().is_empty() => Intent::Console,
+            None => Intent::Ask,
+        }
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::modes::ActiveMode;
 
     #[test]
-    fn flags_after_positionals_still_parse() {
-        let cli = Cli::try_parse_from([
-            "cmdpal", "-m", "git", "how", "to", "delete", "this", "branch", "--ai",
-        ])
-        .unwrap();
-        assert_eq!(cli.mode, Some(crate::modes::ActiveMode::Git));
-        assert!(cli.ai);
-        assert_eq!(cli.query(), "how to delete this branch");
-        assert_eq!(cli.engine(Engine::Offline), Engine::Ai);
+    fn a_bare_invocation_opens_the_console() {
+        let cli = Cli::try_parse_from(["cmdpal"]).unwrap();
+        assert_eq!(cli.intent(), Intent::Console);
     }
 
     #[test]
-    fn explicit_engine_flag_wins_over_ai_flag() {
-        let cli = Cli::try_parse_from(["cmdpal", "--engine", "offline", "--ai"]).unwrap_err();
-        assert_eq!(cli.kind(), clap::error::ErrorKind::ArgumentConflict);
+    fn flags_alone_still_open_the_console() {
+        for argv in [
+            vec!["cmdpal", "-m", "docker"],
+            vec!["cmdpal", "--verbose"],
+            vec!["cmdpal", "--mode", "git"],
+        ] {
+            assert_eq!(Cli::try_parse_from(argv).unwrap().intent(), Intent::Console);
+        }
     }
 
     #[test]
-    fn engine_flag_alone_is_respected() {
-        let cli = Cli::try_parse_from(["cmdpal", "--engine", "ai", "list pods"]).unwrap();
-        assert_eq!(cli.engine(Engine::Offline), Engine::Ai);
+    fn a_query_means_ask_the_model() {
+        let cli = Cli::try_parse_from(["cmdpal", "find", "the", "running", "ports"]).unwrap();
+        assert_eq!(cli.query(), "find the running ports");
+        assert_eq!(cli.intent(), Intent::Ask);
     }
 
     #[test]
-    fn defaults_to_configured_engine() {
-        let cli = Cli::try_parse_from(["cmdpal", "list pods"]).unwrap();
-        assert_eq!(cli.engine(Engine::Offline), Engine::Offline);
-        assert_eq!(cli.engine(Engine::Ai), Engine::Ai);
+    fn a_query_with_a_mode_means_ask_the_model() {
+        let cli = Cli::try_parse_from(["cmdpal", "-m", "docker", "list", "containers"]).unwrap();
+        assert_eq!(cli.mode, Some(ActiveMode::Docker));
+        assert_eq!(cli.intent(), Intent::Ask);
+    }
+
+    #[test]
+    fn pick_wins_over_a_query() {
+        let cli = Cli::try_parse_from(["cmdpal", "--pick", "1", "delete", "directory"]).unwrap();
+        assert_eq!(cli.intent(), Intent::Pick(1));
+        assert_eq!(cli.query(), "delete directory");
+    }
+
+    #[test]
+    fn pick_without_a_query_still_picks() {
+        let cli = Cli::try_parse_from(["cmdpal", "--pick", "3"]).unwrap();
+        assert_eq!(cli.intent(), Intent::Pick(3));
+    }
+
+    #[test]
+    fn whitespace_only_query_still_opens_the_console() {
+        let cli = Cli::try_parse_from(["cmdpal", " "]).unwrap();
+        assert_eq!(cli.intent(), Intent::Console);
     }
 
     #[test]

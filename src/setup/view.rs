@@ -1,4 +1,4 @@
-use crate::{config::GOOGLE_BASE_URL, engine::Engine, llm};
+use crate::{config::GOOGLE_BASE_URL, llm};
 use ratatui::{
     layout::{Constraint, Layout, Rect},
     style::{Modifier, Style, Stylize},
@@ -8,21 +8,16 @@ use ratatui::{
 };
 
 pub struct Draft {
-    /// Default engine the wizard will save (`ai.default_engine` in config.toml).
-    pub engine: Engine,
     pub key: String,
     /// True while `key` still holds the value loaded from the OS credential store;
     /// any edit clears it so the hint and badge track reality.
     pub key_prefilled: bool,
-    /// False on machines with no OS credential store: AI cannot be configured there.
-    pub secrets_available: bool,
     pub base_url: String,
     pub model: String,
     pub selection: usize,
 }
 
 pub enum Step {
-    Engine,
     ApiKey,
     BaseUrl,
     Model { models: Vec<String> },
@@ -85,25 +80,6 @@ fn draw_model_picker(frame: &mut Frame, body: Rect, draft: &Draft, models: &[Str
 fn content(step: &Step, draft: &Draft) -> Vec<Line<'static>> {
     let mut lines = Vec::new();
     match step {
-        Step::Engine => {
-            lines.push(Line::from("Answer queries with").dim());
-            lines.push(engine_option(
-                draft,
-                Engine::Offline,
-                "Manual",
-                "search the built-in catalog, instant and offline",
-            ));
-            let mut ai_description = "ask the model with your API key".to_string();
-            if !draft.secrets_available {
-                ai_description.push_str(" (unavailable: no OS credential store)");
-            }
-            lines.push(engine_option(draft, Engine::Ai, "AI", &ai_description));
-            lines.push(Line::from(""));
-            lines.push(Line::from(
-                " --ai / --engine override this for one run; Ctrl+A toggles inside the palette."
-                    .dim(),
-            ));
-        }
         Step::ApiKey => {
             lines.push(key_line(draft));
             lines.push(field("Base URL", &draft.base_url));
@@ -141,7 +117,6 @@ fn content(step: &Step, draft: &Draft) -> Vec<Line<'static>> {
             }
         }
         Step::Summary => {
-            lines.push(field("Engine", engine_word(draft.engine)));
             lines.push(field("API key", &masked(&draft.key)));
             lines.push(field("Base URL", &draft.base_url));
             lines.push(field("Model", &draft.model));
@@ -152,21 +127,6 @@ fn content(step: &Step, draft: &Draft) -> Vec<Line<'static>> {
         }
     }
     lines
-}
-
-/// The wizard speaks of "manual" because that is what a user chooses; the config
-/// file still stores the machine name ("offline") that the rest of the app uses.
-fn engine_word(engine: Engine) -> &'static str {
-    if engine.is_ai() {
-        "ai"
-    } else {
-        "manual (offline)"
-    }
-}
-
-fn engine_option(draft: &Draft, engine: Engine, name: &str, description: &str) -> Line<'static> {
-    let marker = if draft.engine == engine { "▶ " } else { "  " };
-    Line::from(format!("{marker}{name:<8}— {description}"))
 }
 
 fn key_line(draft: &Draft) -> Line<'static> {
@@ -233,14 +193,11 @@ fn is_chat_model(id: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::engine::Engine;
 
     fn draft() -> Draft {
         Draft {
-            engine: Engine::Offline,
             key: "AIzaSyTESTKEY1234".into(),
             key_prefilled: false,
-            secrets_available: true,
             base_url: GOOGLE_BASE_URL.into(),
             model: String::new(),
             selection: 0,
@@ -342,41 +299,12 @@ mod tests {
     }
 
     #[test]
-    fn engine_menu_marks_the_selected_option() {
-        let lines = content(&Step::Engine, &draft());
-        assert!(text(&lines[1]).starts_with("▶ Manual"));
-        assert!(text(&lines[2]).starts_with("  AI"));
-
-        let mut ai = draft();
-        ai.engine = Engine::Ai;
-        let lines = content(&Step::Engine, &ai);
-        assert!(text(&lines[1]).starts_with("  Manual"));
-        assert!(text(&lines[2]).starts_with("▶ AI"));
-    }
-
-    #[test]
-    fn engine_menu_explains_each_option() {
-        let lines = content(&Step::Engine, &draft());
-        assert!(text(&lines[1]).contains("built-in catalog"));
-        assert!(text(&lines[2]).contains("ask the model"));
-        assert!(text(&lines[4]).contains("--ai / --engine override"));
-    }
-
-    #[test]
-    fn engine_menu_flags_missing_credential_store() {
+    fn summary_shows_key_url_and_model() {
         let mut draft = draft();
-        draft.secrets_available = false;
-        let lines = content(&Step::Engine, &draft);
-        assert!(text(&lines[2]).contains("no OS credential store"));
-    }
-
-    #[test]
-    fn summary_leads_with_the_engine_choice() {
-        let mut draft = draft();
-        draft.engine = Engine::Ai;
+        draft.model = "gemini-2.5-flash".into();
         let lines = content(&Step::Summary, &draft);
-        assert!(text(&lines[0]).contains("Engine"));
-        assert!(text(&lines[0]).contains("ai"));
-        assert!(text(&lines[1]).contains("API key"));
+        assert!(text(&lines[0]).contains("API key"));
+        assert!(text(&lines[1]).contains("Base URL"));
+        assert!(text(&lines[2]).contains("gemini-2.5-flash"));
     }
 }
