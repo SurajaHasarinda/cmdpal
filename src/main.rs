@@ -77,7 +77,6 @@ fn run_palette(cli: Cli, config: &config::Config) -> Result<()> {
     Ok(())
 }
 
-// Failures surface instead of silently degrading.
 fn answer(
     config: &config::Config,
     context: &context::ContextSnapshot,
@@ -85,7 +84,9 @@ fn answer(
     query: &str,
 ) -> Result<()> {
     let command = llm::ask(config, query, context, mode)?;
-    clipboard::copy_to_clipboard(&command)?;
+    if let Err(error) = clipboard::copy_to_clipboard(&command) {
+        eprintln!("Clipboard unavailable: {error}");
+    }
     println!("{command}");
     Ok(())
 }
