@@ -37,7 +37,7 @@ Then open a new terminal and run `cmdpal`. Each installer verifies a SHA-256 che
 | | Windows | Linux |
 |---|---|---|
 | Installs to | `%LOCALAPPDATA%\Programs\cmdpal` | `~/.local/bin` |
-| Specific version | `.\install.ps1 -Version 0.1.3` | `… \| sh -s -- --version 0.1.3` |
+| Specific version | `.\install.ps1 -Version 0.1.4` | `… \| sh -s -- --version 0.1.4` |
 | Uninstall | `.\install.ps1 -Uninstall` | `sh install.sh --uninstall` |
 
 You can also build from source with `cargo install --git https://github.com/SurajaHasarinda/cmdpal`.

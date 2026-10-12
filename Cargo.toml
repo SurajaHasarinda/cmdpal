@@ -1,6 +1,6 @@
 [package]
 name = "cmdpal"
-version = "0.1.3"
+version = "0.1.4"
 edition = "2021"
 description = "Command palette for terminal - search commands by natural language"
 license = "MIT"

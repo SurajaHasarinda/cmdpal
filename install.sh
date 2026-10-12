@@ -2,7 +2,7 @@
 # cmdpal installer for Linux x86_64 (per-user, no sudo).
 #
 #   curl -fsSL https://github.com/SurajaHasarinda/cmdpal/releases/latest/download/install.sh | sh
-#   curl -fsSL .../install.sh | sh -s -- --version 0.1.3
+#   curl -fsSL .../install.sh | sh -s -- --version 0.1.4
 #   sh install.sh --uninstall [--purge]
 #
 # Environment: CMDPAL_INSTALL_DIR (default ~/.local/bin), CMDPAL_BASE_URL (release URL or a local
