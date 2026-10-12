@@ -41,7 +41,7 @@ pub struct ContextSnapshot {
 }
 
 impl ContextSnapshot {
-    /// Built lazily: the offline path never pays for tree walks or subprocess probes.
+    // Built lazily: the offline path never pays for tree walks or subprocess probes.
     pub fn enrich(&self, config: &Context) -> EnrichedContext {
         let tree = config.include_fs.then(|| {
             tree::walk(

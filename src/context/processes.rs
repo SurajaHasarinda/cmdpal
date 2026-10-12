@@ -16,8 +16,7 @@ pub struct ProcessContext {
 
 pub fn collect(cwd: &Path) -> ProcessContext {
     ProcessContext {
-        // One field per line: a tab-joined format would be stripped by sanitize_line
-        // (tabs are control characters) and glue the fields into one bogus entry.
+        // One field per line: sanitize_line would strip the tabs and glue fields.
         containers: if which(DOCKER).is_some() {
             docker(&["ps", "--format", "{{.Names}}"])
         } else {
@@ -114,7 +113,7 @@ fn run(binary: &str, args: &[&str]) -> Vec<String> {
         .collect()
 }
 
-/// Commit messages, container names and paths are attacker-controllable and land in a prompt.
+// Commit messages, container names and paths are attacker-controllable and land in a prompt.
 pub fn sanitize_line(line: &str) -> String {
     line.chars()
         .filter(|c| !c.is_control())

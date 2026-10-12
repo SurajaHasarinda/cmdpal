@@ -3,7 +3,7 @@ use crate::{config::Config, context::ContextSnapshot, modes::ActiveMode};
 use anyhow::Result;
 use zeroize::Zeroizing;
 
-/// Prebuilt request; owns the key so no caller has to keep it alive across a thread boundary.
+/// Owns the key so it can cross a thread boundary without the caller holding it.
 pub struct Prompt {
     key: Zeroizing<String>,
     messages: Vec<Message>,

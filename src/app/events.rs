@@ -30,9 +30,7 @@ pub fn run(
     let mut answers: Option<Answers> = None;
     let outcome = (|| -> Result<()> {
         while !state.should_quit {
-            // Collect placeholder sources before drawing so the preview shows the
-            // resolved command. Cached after the first hit, so this is a cheap
-            // check rather than a subprocess per frame.
+            // Collect placeholder sources before drawing so the preview is resolved.
             state.ensure_processes();
             terminal.draw(|frame| render::draw(frame, &state))?;
             if event::poll(TICK)? {

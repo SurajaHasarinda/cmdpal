@@ -10,8 +10,7 @@ const MAX_ENTRIES: usize = 100;
 const MAX_BRANCHES: usize = 20;
 
 pub fn detect_shell() -> ShellType {
-    // PSModulePath is set system-wide on Windows, so it only signals "a PowerShell-family host is likely";
-    // cmd.exe is out of scope for v1.
+    // PSModulePath is system-wide on Windows, so it only signals "PowerShell-family host".
     if cfg!(windows) {
         return if env::var_os("PSModulePath").is_some() {
             ShellType::Pwsh

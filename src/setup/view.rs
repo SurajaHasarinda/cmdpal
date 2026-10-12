@@ -9,8 +9,7 @@ use ratatui::{
 
 pub struct Draft {
     pub key: String,
-    /// True while `key` still holds the value loaded from the OS credential store;
-    /// any edit clears it so the hint and badge track reality.
+    /// True while `key` still holds the value from the credential store.
     pub key_prefilled: bool,
     pub base_url: String,
     pub model: String,
@@ -49,9 +48,7 @@ fn draw_footer(frame: &mut Frame, footer: Rect) {
     );
 }
 
-/// The model list can be longer than the terminal is tall, so it renders as a scrolling
-/// `List`: ratatui keeps the selected row inside the viewport as ↑↓ move it, instead of
-/// the old flat paragraph that clipped the overflow and left the marker out of view.
+/// A scrolling `List` keeps the selected row visible when the models overflow.
 fn draw_model_picker(frame: &mut Frame, body: Rect, draft: &Draft, models: &[String]) {
     let block = Block::bordered().title(" cmdpal setup ");
     frame.render_widget(block.clone(), body);
@@ -183,7 +180,7 @@ pub fn first_chat_model(models: &[String]) -> String {
     ids.into_iter().next().unwrap_or_default()
 }
 
-/// Embedding, image and TTS models cannot answer a chat request.
+// Embedding, image and TTS models cannot answer a chat request.
 fn is_chat_model(id: &str) -> bool {
     ["embedding", "image", "tts", "aqa", "imagen"]
         .iter()

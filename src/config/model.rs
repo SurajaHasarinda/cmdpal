@@ -84,7 +84,7 @@ impl Default for Ranking {
             usage_weight: 0.3,
             recency_weight: 0.2,
             mode_boost: 0.5,
-            // Match quality must outweigh base popularity, but stay low enough that usage history still counts.
+            // Match quality must outweigh base popularity, while usage history still counts.
             match_weight: 3.0,
             demote_other_modes: 0.3,
         }

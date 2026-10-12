@@ -1,20 +1,13 @@
-//! Fill `{placeholder}` tokens from the detected environment before copying.
+//! Fill `{placeholder}` tokens from the detected environment.
 //!
-//! The rule is deliberately conservative: a placeholder is replaced only when
-//! the context offers exactly one candidate. With two containers running, the
-//! token is left alone rather than silently picking the first — a wrong guess in
-//! a tool whose promise is that it never runs anything for you is worse than an
-//! unfilled token the user completes by hand.
-//!
-//! `{path}` is never resolved: filling it with the working directory would turn
-//! `Remove-Item -Recurse -Force {path}` into `… -Force .`.
+//! Only when exactly one candidate exists, so no ambiguous guess is made silently.
+//! `{path}` is never filled: the cwd would give `Remove-Item -Recurse -Force .`.
 
 use crate::{
     context::{ContextSnapshot, ProcessContext},
     knowledge::Command,
 };
 
-/// Every value we know how to substitute, grouped by placeholder name.
 pub struct Candidates<'a> {
     pub containers: &'a [String],
     pub images: &'a [String],
@@ -51,8 +44,7 @@ impl<'a> Candidates<'a> {
         }
     }
 
-    /// The single candidate for a placeholder, or `None` when there is none or
-    /// more than one.
+    /// The only candidate for a placeholder, or `None` if there isn't exactly one.
     fn only(&self, name: &str) -> Option<&str> {
         let group: &[String] = match name {
             "container" => self.containers,
@@ -76,8 +68,7 @@ fn single(group: &[String]) -> Option<&str> {
     }
 }
 
-/// The command with resolvable placeholders filled in; unknown or ambiguous ones
-/// are left verbatim so the user can complete them after pasting.
+/// The command with resolvable placeholders filled; others left verbatim.
 pub fn resolve(command: &Command, candidates: &Candidates) -> String {
     let mut out = String::with_capacity(command.command.len());
     let mut rest = command.command.as_str();
@@ -98,8 +89,7 @@ pub fn resolve(command: &Command, candidates: &Candidates) -> String {
     out
 }
 
-/// Placeholder names that resolution would consult, used to decide whether the
-/// (subprocess-backed) process context is worth collecting at all.
+/// Whether resolving this command needs the process context.
 pub fn needs_processes(command: &Command) -> bool {
     command.placeholders.iter().any(|placeholder| {
         matches!(
@@ -190,8 +180,7 @@ mod tests {
 
     #[test]
     fn a_tag_never_leaks_into_the_container_name() {
-        // Regression: `docker ps` once emitted tab-joined fields that sanitize_line
-        // collapsed, turning this into "itembank-postgrespostgres:16".
+        // Regression: tab-joined docker output once collapsed into "itembank-postgrespostgres:16".
         let processes = ProcessContext {
             containers: strings(&["itembank-postgres"]),
             images: strings(&["postgres:16"]),
@@ -207,7 +196,7 @@ mod tests {
 
     #[test]
     fn path_is_never_resolved() {
-        // Filling {path} with the cwd would produce "Remove-Item -Recurse -Force ."
+        // cwd would produce "Remove-Item -Recurse -Force ."
         let processes = ProcessContext::default();
         let resolved = resolve(
             &command("Remove-Item -Recurse -Force {path}", &[("path", "path")]),

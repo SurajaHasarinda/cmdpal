@@ -7,7 +7,7 @@ use clap::Parser;
     about = "Terminal command palette: cmdpal [-m <mode>] [query...]"
 )]
 pub struct Cli {
-    /// Start the console in this mode (default: the mode you last quit in, else the one matching your OS)
+    /// Start the console in this mode (default: the last one you used, else your OS)
     #[arg(short, long, value_enum)]
     pub mode: Option<crate::modes::ActiveMode>,
 
@@ -27,20 +27,14 @@ pub struct Cli {
     #[arg(long)]
     pub context: bool,
 
-    /// Search query (the words are joined with spaces). A query means "ask the model and exit".
+    /// Search query (the words are joined with spaces). A query means "ask the model and exit"
     pub query: Vec<String>,
 }
 
-/// What the invocation asks for. Engine selection is not a flag: the *shape* of
-/// the command decides it, so `cmdpal` can never end up unable to open the
-/// console and `cmdpal "..."` never needs `--ai` to reach the model.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Intent {
-    /// No query: open the interactive console.
     Console,
-    /// A query was given: answer with the model, copy, and exit.
     Ask,
-    /// --pick: search the offline catalog and print, for scripts.
     Pick(usize),
 }
 
@@ -49,8 +43,7 @@ impl Cli {
         self.query.join(" ")
     }
 
-    /// `--pick` wins over a query so scripted lookups stay on the offline catalog
-    /// even when words were passed for the search.
+    /// `--pick` wins over a query, keeping scripted lookups on the offline catalog.
     pub fn intent(&self) -> Intent {
         match self.pick {
             Some(position) => Intent::Pick(position),

@@ -10,7 +10,6 @@ use crate::{
 
 const EMPTY_QUERY_RESULTS: usize = 10;
 
-/// Borrowed placeholder source before any collection has happened.
 static EMPTY: ProcessContext = ProcessContext {
     containers: Vec::new(),
     images: Vec::new(),
@@ -62,8 +61,7 @@ impl AppState {
             results: Vec::new(),
             selected: 0,
             mode,
-            // The console always starts on the offline catalog; Ctrl+A switches to
-            // the model mid-session. Engine choice is never a startup concern.
+            // The console always starts offline; Ctrl+A switches to the model.
             engine: Engine::Offline,
             context,
             should_quit: false,
@@ -137,11 +135,7 @@ impl AppState {
         self.results.get(self.selected)
     }
 
-    /// Placeholder values for the selected command.
-    ///
-    /// `docker ps` and friends are subprocesses, so they are collected at most
-    /// once per session and only when the selected command has a placeholder that
-    /// needs them — a plain `git status` spawns nothing.
+    /// Collects process facts at most once per session, and only when needed.
     pub fn ensure_processes(&mut self) {
         if self.processes.is_some() {
             return;

@@ -50,8 +50,7 @@ pub fn run(config: &Config) -> Result<()> {
     outcome
 }
 
-/// A saved key is preloaded so the wizard can show (and keep) the existing
-/// configuration instead of forcing a re-entry on every `--setup` run.
+// Preloads the saved key so the wizard can show and keep it.
 fn initial_draft(config: &Config, saved_key: Option<String>) -> Draft {
     let key_prefilled = saved_key.is_some();
     Draft {
@@ -137,8 +136,7 @@ fn advance(step: &mut Step, event: KeyEvent, draft: &mut Draft) -> Flow {
     }
 }
 
-/// Editing a saved key starts fresh: the field is masked, so appending invisible
-/// characters to the stored value would corrupt it without the user ever seeing it.
+/// Editing a masked saved key starts fresh rather than appending invisibly.
 fn discard_prefilled_key(field: Field, draft: &mut Draft) {
     if field == Field::Key && draft.key_prefilled {
         draft.key.clear();
@@ -176,8 +174,7 @@ fn set_model(draft: &mut Draft, value: &str) {
     draft.model.push_str(value);
 }
 
-/// Point the highlight at the model the wizard is about to use, so the marker and
-/// the field agree from the first frame instead of snapping on the first arrow press.
+/// Point the highlight at the model already chosen, so marker and field agree.
 fn sync_selection(models: &[String], model: &str) -> usize {
     models.iter().position(|id| id == model).unwrap_or(0)
 }

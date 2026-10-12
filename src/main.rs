@@ -55,9 +55,7 @@ fn run_palette(cli: Cli, config: &config::Config) -> Result<()> {
     let context = context::detect();
     let query = cli.query();
 
-    // The shape of the invocation picks the surface: --pick stays on the offline
-    // catalog for scripts, a query means "ask the model", and anything else opens
-    // the console. The engine is never a flag, so a bare `cmdpal` always works.
+    // The invocation shape picks the surface; the engine is never a flag.
     match cli.intent() {
         Intent::Pick(position) => {
             return print_pick(&searcher, &query, &context, mode, position, cli.verbose);
@@ -79,8 +77,7 @@ fn run_palette(cli: Cli, config: &config::Config) -> Result<()> {
     Ok(())
 }
 
-/// A query was typed, so the model answers. Failures surface instead of
-/// silently degrading, because this is what the user explicitly asked for.
+// Failures surface instead of silently degrading.
 fn answer(
     config: &config::Config,
     context: &context::ContextSnapshot,
@@ -111,8 +108,7 @@ fn print_pick(
             picked.command.id, picked.score, picked.breakdown
         );
     }
-    // Process facts are subprocesses, so collect them only when this command
-    // actually has a placeholder that needs them.
+    // Process facts are subprocesses, so collect them only when needed.
     let processes = if resolve::needs_processes(&picked.command) {
         context::processes::collect(&context.cwd)
     } else {

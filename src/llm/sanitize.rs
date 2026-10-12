@@ -1,4 +1,4 @@
-/// A terminal command is a single line; anything else is prose the model ignored.
+// A terminal command is a single line; anything else is prose the model ignored.
 pub fn sanitize(raw: &str) -> Option<String> {
     let body = strip_fences(raw);
     let lines: Vec<&str> = body

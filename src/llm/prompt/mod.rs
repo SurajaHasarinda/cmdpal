@@ -48,8 +48,7 @@ fn environment(snapshot: &ContextSnapshot, mode: Option<ActiveMode>) -> String {
         if cfg!(windows) { "windows" } else { "linux" },
         shell_name(snapshot.shell),
     );
-    // Only present when the user actually passed -m; otherwise the live context
-    // below is the whole story and an invented mode would only mislead the model.
+    // Only present when -m was passed; otherwise the live context says it all.
     if let Some(mode) = mode {
         out.push_str(&format!("\nrequested_mode: {}", mode.id()));
     }

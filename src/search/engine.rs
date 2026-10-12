@@ -64,8 +64,7 @@ const STOPWORDS: &[&str] = &[
     "also",
 ];
 
-// Canonical word first; every other word in the group is rewritten to it on both the query and the
-// catalog side, so a synonym matches exactly instead of relying on each alias listing every variant.
+// Canonical word first; every other word in the group is rewritten to it.
 const SYNONYMS: &[&[&str]] = &[
     &["directory", "folder", "dir"],
     &[
@@ -112,12 +111,11 @@ static SYNONYM_STEMS: LazyLock<HashMap<String, String>> = LazyLock::new(|| {
 });
 
 const FUZZY_WEIGHT: f32 = 0.5;
-// skim awards ~16 per matched char plus boundary/consecutive bonuses, so ~28/char approximates a perfect match.
+// skim awards ~28/char for a perfect match, including its bonuses.
 const FUZZY_SCORE_PER_CHAR: f32 = 28.0;
 const COMMAND_TEXT_DISCOUNT: f32 = 0.8;
 const TAG_MATCH_SCORE: f32 = 0.5;
-// Pooled word matching finds commands; phrase agreement decides between them, rewarding the alias
-// that says what the user said over a popular command that merely shares a word.
+// Pooled matching finds candidates; phrase agreement picks between them.
 const POOLED_SHARE: f32 = 0.5;
 
 // Crude but symmetric: both sides go through it, so "deleting", "deleted" and "delete" all become "delet".

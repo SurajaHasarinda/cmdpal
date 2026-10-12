@@ -1,10 +1,4 @@
-//! Ground-truth accuracy harness for search ranking.
-//!
-//! Each case is a natural-language query paired with the catalog command a user
-//! would expect first. Metrics: Top-1/Top-3/Top-5 accuracy and MRR.
-//!
-//! Run the report with:
-//!   cargo test accuracy -- --nocapture
+//! Ground-truth ranking report: `cargo test accuracy -- --nocapture`.
 
 use super::Searcher;
 use crate::{
@@ -18,7 +12,7 @@ use std::{
     sync::LazyLock,
 };
 
-/// (mode id, query, expected command id)
+// (mode id, query, expected command id)
 const CASES: &[(&str, &str, &str)] = &[
     // ---- linux ----
     ("linux", "delete directory", "rm-rf"),
@@ -182,7 +176,7 @@ struct CaseResult {
     mode: &'static str,
     query: &'static str,
     expected: &'static str,
-    /// 1-based rank of the expected command, `None` when absent from the results.
+    // 1-based rank of the expected command, `None` when absent.
     rank: Option<usize>,
     top_id: String,
     top_trigger: String,
