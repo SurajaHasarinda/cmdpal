@@ -1,16 +1,23 @@
 # cmdpal
 
-A fast, offline command palette for the terminal. Describe what you want in plain language and get the exact command, copied to your clipboard. It never runs anything for you.
+A command palette for your terminal. Describe what you want in plain language, get the exact command on your clipboard. It never runs anything.
 
 ```
-cmdpal delete directory          # → Remove-Item -Recurse -Force {path}   (or rm -rf {path} on Linux)
+cmdpal delete directory          # → Remove-Item -Recurse -Force {path}
 cmdpal -m git undo last commit   # → git reset --soft HEAD~1
 cmdpal -m docker shell into container
 ```
 
-## Install
+## Features
 
-Per-user, no admin rights, no Rust required.
+- **Plain-language search** over a built-in catalog of shell commands — instant and offline.
+- **Five modes** for `windows`, `linux`, `git`, `kube` and `docker`, so the same request returns the right flavor of command.
+- **Optional AI mode** — ask a model to write the command, using your live environment.
+- **Safe by default** — commands are copied to your clipboard, never executed. Risky ones are flagged.
+- **Scriptable** — print a result straight to stdout.
+- **Per-user install** on Windows and Linux. No admin rights, no Rust needed.
+
+## Install
 
 **Windows** (PowerShell 5.1 or 7, x64):
 
@@ -24,51 +31,50 @@ irm https://github.com/SurajaHasarinda/cmdpal/releases/latest/download/install.p
 curl -fsSL https://github.com/SurajaHasarinda/cmdpal/releases/latest/download/install.sh | sh
 ```
 
-Then open a new terminal and run `cmdpal`. The installers verify a SHA-256 checksum before installing anything.
+Then open a new terminal and run `cmdpal`. Each installer verifies a SHA-256 checksum before installing.
 
 | | Windows | Linux |
 |---|---|---|
-| Installs to | `%LOCALAPPDATA%\Programs\cmdpal` (added to your user PATH) | `~/.local/bin` (prints the `export PATH=…` line if it's missing from PATH) |
-| Specific version | `.\install.ps1 -Version 0.2.0` | `… \| sh -s -- --version 0.2.0` |
-| Upgrade | re-run the installer | re-run the installer |
-| Uninstall | `.\install.ps1 -Uninstall` (`-Purge` also deletes history) | `sh install.sh --uninstall` (`--purge` also deletes history) |
+| Installs to | `%LOCALAPPDATA%\Programs\cmdpal` | `~/.local/bin` |
+| Specific version | `.\install.ps1 -Version 0.1.1` | `… \| sh -s -- --version 0.1.1` |
+| Uninstall | `.\install.ps1 -Uninstall` | `sh install.sh --uninstall` |
 
-Download `install.ps1` / `install.sh` from the [latest release](https://github.com/SurajaHasarinda/cmdpal/releases/latest) first if you prefer to read a script before running it. Windows binaries are not code-signed, so SmartScreen may ask for confirmation the first time.
-
-**From source** (needs Rust and a C compiler): `cargo install --git https://github.com/SurajaHasarinda/cmdpal`
+You can also build from source with `cargo install --git https://github.com/SurajaHasarinda/cmdpal`.
 
 ## Use
 
 ```
-cmdpal [-m <mode>] [query...]
+cmdpal [-m <mode>] [--ai] [query...]
 ```
+
+Start typing and results update as you go. Pick one with `↑` `↓` and press `Enter` to copy it.
 
 | Key | Action |
 |---|---|
-| type | search; results update as you type |
-| `↑` `↓` / `Ctrl+P` `Ctrl+N` | move selection |
+| `↑` `↓` | move selection |
 | `Enter` | copy the command and quit |
-| `Ctrl+Y` | copy the command with its description as a comment |
-| `Tab` | next mode: windows → linux → git → kube → docker |
+| `Tab` | next mode |
+| `Ctrl+A` | toggle AI mode |
 | `?` | help |
 | `Esc` / `Ctrl+C` | quit |
 
-Modes: `windows` (PowerShell) and `linux` are chosen automatically from your OS at first launch; after that cmdpal reopens in the mode you last used. Override once with `-m`, for example `cmdpal -m linux` from WSL or Git Bash.
+`-m` picks a mode for one run, for example `cmdpal -m git`. Without it, cmdpal reopens in the mode you last used.
 
-Placeholders like `{path}` are shown in orange: replace them after pasting. High-risk commands (recursive deletes, force pushes) are shown in red with a warning.
+Useful flags:
 
-Other options: `--pick N` prints result N and exits (for scripts), `--verbose` adds the score breakdown, `--context` prints the detected environment as JSON.
+| Flag | Does |
+|---|---|
+| `--setup` | configure the API key and AI settings |
+| `--ai` | answer with AI instead of the catalog |
+| `--pick N` | print result N and exit, for scripts |
+| `--context` | show the environment cmdpal detected |
 
-Usage history and the remembered mode are stored in `%APPDATA%\cmdpal\db.sqlite` (Windows) or `~/.local/share/cmdpal/db.sqlite` (Linux); set `CMDPAL_DB` to change it.
+## AI mode
 
-## Development
+Run `cmdpal --setup` and choose **AI** to store an API key. Any OpenAI-compatible service works. The key is kept in your operating system's credential store, never in a plain config file.
 
-```sh
-cargo test
-cargo fmt --check && cargo clippy --all-targets -- -D warnings
-python tools/gen_commands.py   # rebuild data/commands.json after editing the catalog tables or data/aliases.json
-```
+Then press `Ctrl+A` inside the palette to switch engines — the catalog and the model are both one keystroke away, so you decide when to spend a request.
 
-Release: bump `version` in `Cargo.toml`, then `git tag vX.Y.Z && git push origin vX.Y.Z`. CI builds the Windows and Linux archives, smoke-tests both installers, and publishes the release.
+AI mode sends your working directory, file tree, git state and containers so the answer fits your machine. Ask before using it if that matters to you; `cmdpal --context` shows exactly what gets shared.
 
 MIT licensed.
