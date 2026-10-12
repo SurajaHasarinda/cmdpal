@@ -4,7 +4,7 @@
 .EXAMPLE
     irm https://github.com/SurajaHasarinda/cmdpal/releases/latest/download/install.ps1 | iex
 .EXAMPLE
-    .\install.ps1 -Version 0.1.4
+    .\install.ps1 -Version 0.1.5
 .EXAMPLE
     .\install.ps1 -Uninstall -Purge
 #>
